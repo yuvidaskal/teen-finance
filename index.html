@@ -404,6 +404,7 @@
   <header>
     <div class="logo"><span>💸</span> כסף חכם</div>
     <div class="tagline">ניהול כלכלי לבני נוער · התחל לחסוך עכשיו</div>
+    <div id="syncStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;transition:opacity 1s;"></div>
   </header>
 
   <div class="tabs">
@@ -791,20 +792,61 @@ let selectedCatEmoji = '🍕';
 let watchlist = [];
 const CAT_COLORS = ['#7c3aed','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#8b5cf6','#14b8a6','#f97316','#6366f1'];
 
-// ---- PERSISTENCE ----
-const STORAGE_KEY = 'kesefChakham_v1';
+// ---- SUPABASE ----
+const SUPABASE_URL = 'https://onxwmsptviungelbqsco.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_vqBk62C4Jwop9jboO9Skyw_yibpz3ZV';
+const USER_ID = 'user_1'; // מזהה קבוע — אפשר לשנות בעתיד להתחברות אמיתית
 
-function saveState() {
+async function dbGet(table) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${USER_ID}&order=created_at.asc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch(e) { return []; }
+}
+
+async function dbInsert(table, data) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ ...data, user_id: USER_ID })
+    });
+  } catch(e) {}
+}
+
+async function dbDelete(table, id) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&user_id=eq.${USER_ID}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+  } catch(e) {}
+}
+
+async function dbUpsertSettings(data) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ ...data, user_id: USER_ID, id: USER_ID })
+    });
+  } catch(e) {}
+}
+
+// localStorage כגיבוי מהיר (לטעינה ראשונית מהירה)
+const STORAGE_KEY = 'kesefChakham_v1';
+function saveLocalBackup() {
   const income = document.getElementById('income')?.value || '1200';
   const principal = document.getElementById('principal')?.value || '5000';
   const monthly = document.getElementById('monthly')?.value || '200';
   const rate = document.getElementById('rate')?.value || '4';
   const years = document.getElementById('years')?.value || '5';
-  const state = { expenses, budgetCategories, watchlist, income, principal, monthly, rate, years };
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ expenses, budgetCategories, watchlist, income, principal, monthly, rate, years })); } catch(e) {}
 }
-
-function loadState() {
+function loadLocalBackup() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
@@ -812,12 +854,57 @@ function loadState() {
     if (s.expenses) expenses = s.expenses;
     if (s.budgetCategories) budgetCategories = s.budgetCategories;
     if (s.watchlist) watchlist = s.watchlist;
-    if (s.income) document.getElementById('income').value = s.income;
-    if (s.principal) document.getElementById('principal').value = s.principal;
-    if (s.monthly) document.getElementById('monthly').value = s.monthly;
-    if (s.rate) { document.getElementById('rate').value = s.rate; updateRate(); }
-    if (s.years) { document.getElementById('years').value = s.years; updateYears(); }
+    applySettings(s);
   } catch(e) {}
+}
+function applySettings(s) {
+  if (s.income) document.getElementById('income').value = s.income;
+  if (s.principal) document.getElementById('principal').value = s.principal;
+  if (s.monthly) document.getElementById('monthly').value = s.monthly;
+  if (s.rate) { document.getElementById('rate').value = s.rate; updateRate(); }
+  if (s.years) { document.getElementById('years').value = s.years; updateYears(); }
+}
+
+async function loadFromSupabase() {
+  showSyncStatus('מסנכרן נתונים... ☁️');
+  try {
+    const [expRows, catRows, settRows] = await Promise.all([
+      dbGet('expenses'), dbGet('budget_categories'), dbGet('settings')
+    ]);
+
+    if (expRows.length > 0 || catRows.length > 0) {
+      expenses = expRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id }));
+      budgetCategories = catRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, color: r.color }));
+    }
+    if (settRows.length > 0) applySettings(settRows[0]);
+    if (settRows[0]?.watchlist) watchlist = JSON.parse(settRows[0].watchlist || '[]');
+
+    saveLocalBackup();
+    renderAll();
+    renderWatchlist();
+    updateHome();
+    showSyncStatus('מסונכרן ✅', true);
+  } catch(e) {
+    showSyncStatus('עובד במצב לא מקוון 📴', true);
+  }
+}
+
+async function saveSettings() {
+  const income = document.getElementById('income')?.value || '1200';
+  const principal = document.getElementById('principal')?.value || '5000';
+  const monthly = document.getElementById('monthly')?.value || '200';
+  const rate = document.getElementById('rate')?.value || '4';
+  const years = document.getElementById('years')?.value || '5';
+  saveLocalBackup();
+  await dbUpsertSettings({ income, principal, monthly, rate, years, watchlist: JSON.stringify(watchlist) });
+}
+
+function showSyncStatus(msg, fade = false) {
+  let el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  if (fade) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
 
 // ---- TABS ----
@@ -983,14 +1070,14 @@ function renderStockResult(s) {
 function addToWatchlist(stock) {
   if (watchlist.some(w => w.symbol === stock.symbol)) return;
   watchlist.push(stock);
-  saveState();
+  saveSettings();
   renderWatchlist();
   renderStockResult(stock);
 }
 
 function removeFromWatchlist(symbol) {
   watchlist = watchlist.filter(w => w.symbol !== symbol);
-  saveState();
+  saveSettings();
   renderWatchlist();
 }
 
@@ -1037,7 +1124,7 @@ function fmt(n) {
 }
 
 function calcSavings() {
-  saveState();
+  saveSettings();
   const P = parseFloat(document.getElementById('principal').value) || 0;
   const m = parseFloat(document.getElementById('monthly').value) || 0;
   const r = parseFloat(document.getElementById('rate').value) / 100;
@@ -1107,24 +1194,26 @@ function addBudgetCategory() {
     alert('סכום התקציב עולה על ההכנסה!');
     return;
   }
-  budgetCategories.push({
+  const newCat = {
     id: Date.now(),
     icon: selectedCatEmoji,
     name,
     amount,
     color: CAT_COLORS[budgetCategories.length % CAT_COLORS.length]
-  });
+  };
+  budgetCategories.push(newCat);
   document.getElementById('catName').value = '';
   document.getElementById('catAmount').value = '';
-  saveState();
+  saveLocalBackup();
+  dbInsert('budget_categories', { id: newCat.id, icon: newCat.icon, name: newCat.name, amount: newCat.amount, color: newCat.color });
   renderAll();
 }
 
 function removeBudgetCategory(id) {
   budgetCategories = budgetCategories.filter(c => c.id !== id);
-  // Remove category from expenses
   expenses.forEach(e => { if (e.catId === id) e.catId = null; });
-  saveState();
+  saveLocalBackup();
+  dbDelete('budget_categories', id);
   renderAll();
 }
 
@@ -1133,20 +1222,24 @@ function addExpense() {
   const amount = parseFloat(document.getElementById('expAmount').value);
   const catId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0) return;
-  expenses.push({ icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null });
+  const newExp = { id: Date.now(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null };
+  expenses.push(newExp);
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
-  saveState();
+  saveLocalBackup();
+  dbInsert('expenses', { id: newExp.id, icon: newExp.icon, name: newExp.name, amount: newExp.amount, cat_id: newExp.catId });
   renderAll();
 }
 
 function removeExpense(i) {
+  const exp = expenses[i];
   expenses.splice(i, 1);
-  saveState();
+  saveLocalBackup();
+  if (exp?.id) dbDelete('expenses', exp.id);
   renderAll();
 }
 
-function updateBudget() { saveState(); renderAll(); }
+function updateBudget() { saveSettings(); renderAll(); }
 
 function renderAll() {
   renderCategorySelector();
@@ -1274,11 +1367,12 @@ function renderExpenses() {
 // ---- INIT ----
 updateRate();
 updateYears();
-loadState();
+loadLocalBackup(); // טעינה מהירה מהמכשיר
 calcSavings();
 renderAll();
 renderWatchlist();
 updateHome();
+loadFromSupabase(); // סנכרון מהענן ברקע
 </script>
 </body>
 </html>
