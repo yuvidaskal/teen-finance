@@ -1,0 +1,19 @@
+{
+  "name": "כסף חכם",
+  "short_name": "כסף חכם",
+  "description": "ניהול פיננסי חכם לבני נוער",
+  "start_url": "/teen-finance/",
+  "display": "standalone",
+  "background_color": "#0a0a12",
+  "theme_color": "#7c3aed",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
