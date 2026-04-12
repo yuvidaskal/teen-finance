@@ -11,9 +11,9 @@
   "icons": [
     {
       "src": "icon.png",
-      "sizes": "1408x768",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
