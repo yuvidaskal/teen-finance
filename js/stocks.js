@@ -16,15 +16,35 @@ async function fetchStock() {
   document.getElementById('stockError').style.display = 'none';
   document.getElementById('stockLoading').style.display = 'block';
   try {
-    const prompt = `Fetch the current stock price for ${symbol} on ${exchange} from Google Finance. Use web search. Return ONLY a JSON object (no markdown): {"symbol":"${symbol}","exchange":"${exchange}","name":"Company name","price":123.45,"currency":"USD","change":1.23,"changePct":0.98,"open":122.00,"high":124.50,"low":121.80,"volume":"45.2M","marketCap":"2.8T","pe":28.5,"found":true}. If not found set found:false. Do NOT make up numbers.`;
+    const prompt = `Fetch the current stock price for ${symbol} on ${exchange} from Google Finance. Use web search. Return ONLY a JSON object (no markdown, no extra text): {"symbol":"${symbol}","exchange":"${exchange}","name":"Company name","price":123.45,"currency":"USD","change":1.23,"changePct":0.98,"open":122.00,"high":124.50,"low":121.80,"volume":"45.2M","marketCap":"2.8T","pe":28.5,"found":true}. If not found set found:false. Do NOT make up numbers.`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, tools: [{ type: "web_search_20250305", name: "web_search" }], messages: [{ role: "user", content: prompt }] })
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: prompt }]
+      })
     });
     const data = await resp.json();
-    const text = data.content.map(b => b.type === 'text' ? b.text : '').join('');
-    const stock = JSON.parse(text.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/)[0]);
+
+    // אוסף טקסט מכל סוגי הבלוקים - כולל אחרי חיפוש אינטרנט
+    let allText = '';
+    for (const block of (data.content || [])) {
+      if (block.type === 'text') {
+        allText += block.text + ' ';
+      } else if (block.type === 'tool_result' && Array.isArray(block.content)) {
+        allText += block.content.map(b => b.type === 'text' ? b.text : '').join(' ');
+      }
+    }
+
+    // מחפש JSON תקין בתוך כל הטקסט
+    const cleaned = allText.replace(/```json|```/g, '');
+    const jsonMatch = cleaned.match(/\{[^{}]*"found"\s*:\s*(true|false)[^{}]*\}/);
+    if (!jsonMatch) throw new Error('no JSON');
+    const stock = JSON.parse(jsonMatch[0]);
+
     document.getElementById('stockLoading').style.display = 'none';
     if (!stock.found) {
       document.getElementById('stockErrorMsg').textContent = `לא נמצאו נתונים עבור ${symbol}.`;
