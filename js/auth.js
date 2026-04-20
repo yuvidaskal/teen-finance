@@ -83,6 +83,10 @@ function enterApp() {
   document.getElementById('settingsUsername').textContent = '👤 ' + currentUser.username;
   loadLocalPrefs();
   updateRate(); updateYears();
-  loadLocal(); calcSavings(); renderAll(); renderWatchlist(); updateHome();
+  loadLocal();
+  loadSavingsLocal();
+  renderSavingsList();
+  renderAll(); renderWatchlist(); updateHome();
   loadFromSupabase();
+  loadSavingsFromDB();
 }
