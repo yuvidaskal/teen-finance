@@ -198,29 +198,40 @@
 
   <!-- SAVINGS -->
   <div id="savings" class="panel">
+
+    <!-- Add new saving -->
     <div class="card">
-      <div class="card-title">🧮 מחשבון חיסכון</div>
+      <div class="card-title">➕ הוסף חיסכון חדש</div>
+      <div class="form-group">
+        <label>שם החיסכון</label>
+        <input type="text" id="savingName" placeholder="לדוגמה: חיסכון לאייפון...">
+      </div>
       <div class="grid2">
-        <div class="form-group"><label>סכום בחיסכון (₪)</label><input type="number" id="principal" value="5000" min="0" oninput="calcSavings()"></div>
-        <div class="form-group"><label>הפקדה חודשית (₪)</label><input type="number" id="monthly" value="200" min="0" oninput="calcSavings()"></div>
+        <div class="form-group"><label>סכום התחלתי (₪)</label><input type="number" id="savingPrincipal" value="1000" min="0"></div>
+        <div class="form-group"><label>הפקדה חודשית (₪)</label><input type="number" id="savingMonthly" value="200" min="0"></div>
       </div>
-      <div class="form-group"><label>ריבית שנתית (%)</label><div class="slider-wrap"><div class="slider-val" id="rateLabel">4%</div><input type="range" id="rate" min="0.1" max="15" step="0.1" value="4" oninput="updateRate();calcSavings()"></div></div>
-      <div class="form-group" style="margin-top:1.5rem;"><label>תקופת חיסכון</label><div class="slider-wrap"><div class="slider-val" id="yearsLabel">5 שנים</div><input type="range" id="years" min="1" max="20" step="1" value="5" oninput="updateYears();calcSavings()"></div></div>
-      <div class="result-box">
-        <div class="result-label">סך הכל בתום התקופה</div>
-        <div class="result-num" id="totalResult">₪0</div>
-        <div class="result-sub">בעוד <span id="yearsResult">5</span> שנים</div>
+      <div class="grid2">
+        <div class="form-group"><label>ריבית שנתית (%)</label><input type="number" id="savingRate" value="4" min="0.1" max="15" step="0.1"></div>
+        <div class="form-group"><label>תקופה (שנים)</label><input type="number" id="savingYears" value="5" min="1" max="30"></div>
       </div>
-      <div class="stats-row">
-        <div class="stat"><div class="stat-val" id="interestEarned">₪0</div><div class="stat-lbl">ריבית שהרווחת</div></div>
-        <div class="stat"><div class="stat-val" id="totalDeposited">₪0</div><div class="stat-lbl">סה״כ הפקדות</div></div>
-        <div class="stat"><div class="stat-val" id="perYear">₪0</div><div class="stat-lbl">ריבית לשנה</div></div>
+      <button class="btn btn-primary btn-full" onclick="addSaving()">+ הוסף חיסכון</button>
+    </div>
+
+    <!-- Savings list -->
+    <div id="savingsList"></div>
+
+    <!-- Detail modal -->
+    <div id="savingDetailOverlay" onclick="closeSavingDetail(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:flex-end;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:820px;padding:1.5rem 1.5rem 2.5rem;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease;">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 1rem;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div style="font-size:1rem;font-weight:900;" id="detailTitle">פרטי חיסכון</div>
+          <button onclick="closeSavingDetail()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
+        </div>
+        <div id="detailContent"></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-title">📈 טבלת צמיחה שנתית</div>
-      <div style="overflow-x:auto;"><table class="year-table"><thead><tr><th>שנה</th><th>סך חיסכון</th><th>ריבית שנתית</th><th>צמיחה</th></tr></thead><tbody id="yearTableBody"></tbody></table></div>
-    </div>
+
   </div>
 
   <!-- BUDGET -->
