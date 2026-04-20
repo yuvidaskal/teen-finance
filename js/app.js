@@ -26,16 +26,16 @@ function updateHome() {
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   document.getElementById('homeRemainder').textContent = income > 0 ? fmt(income - total) : '—';
 
-  // Show total across all savings
+  const homeYearsEl = document.getElementById('homeYears');
   if (savings.length > 0) {
     const grandTotal = savings.reduce((sum, s) => {
       return sum + calcOneSaving(s.principal, s.monthly, s.rate, s.years).total;
     }, 0);
     document.getElementById('homeSavings').textContent = fmt(grandTotal);
-    document.getElementById('homeYears').textContent = Math.max(...savings.map(s => s.years));
+    if (homeYearsEl) homeYearsEl.textContent = Math.max(...savings.map(s => s.years));
   } else {
     document.getElementById('homeSavings').textContent = '—';
-    document.getElementById('homeYears').textContent = '—';
+    if (homeYearsEl) homeYearsEl.textContent = '—';
   }
 
   document.getElementById('dailyTip').textContent = tips[Math.floor(Date.now() / 86400000) % tips.length];
