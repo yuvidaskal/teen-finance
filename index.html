@@ -1,204 +1,380 @@
-// ════════════════════════════════
-// EXPORT TO EXCEL
-// ════════════════════════════════
-function exportToExcel() {
-  const income = parseFloat(document.getElementById('income').value) || 0;
-  const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
-  const wb = XLSX.utils.book_new();
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>כסף חכם</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3dbdb5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="כסף חכם">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
 
-  // ── Sheet 1: הוצאות ──
-  const expHeaders = [['אייקון', 'שם הוצאה', 'תקציב', 'סכום (₪)']];
-  const expRows = expenses.map(e => {
-    const cat = budgetCategories.find(c => c.id === e.catId);
-    return [e.icon, e.name, cat ? `${cat.icon} ${cat.name}` : 'ללא תקציב', e.amount];
-  });
-  expRows.push(['', '', 'סה״כ הוצאות', totalExp]);
-  expRows.push(['', '', 'הכנסה', income]);
-  expRows.push(['', '', 'נותר', income - totalExp]);
+<!-- ════════════════════════════════
+     AUTH OVERLAY
+════════════════════════════════ -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img src="icon.png" alt="" onerror="this.style.display='none'">
+      <div class="auth-logo-text">כסף חכם</div>
+      <div style="font-size:.8rem;color:var(--text2);margin-top:.2rem;">ניהול כלכלי לבני נוער</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">התחברות</button>
+      <button class="auth-tab" onclick="showAuthTab('register')">הרשמה</button>
+    </div>
+    <div id="authError" class="auth-error"></div>
+    <div id="authSuccess" class="auth-success"></div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label>שם משתמש</label>
+        <input type="text" id="loginUsername" placeholder="הכנס שם משתמש" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>סיסמא</label>
+        <input type="password" id="loginPassword" placeholder="הכנס סיסמא" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()" style="margin-top:.4rem;">כניסה ←</button>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="form-group">
+        <label>שם משתמש</label>
+        <input type="text" id="regUsername" placeholder="בחר שם משתמש">
+      </div>
+      <div class="form-group">
+        <label>סיסמא</label>
+        <input type="password" id="regPassword" placeholder="בחר סיסמא (לפחות 4 תווים)">
+      </div>
+      <div class="form-group">
+        <label>אימות סיסמא</label>
+        <input type="password" id="regPassword2" placeholder="הכנס שוב את הסיסמא" onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doRegister()" style="margin-top:.4rem;">הירשם ←</button>
+    </div>
+  </div>
+</div>
 
-  const wsExp = XLSX.utils.aoa_to_sheet([...expHeaders, ...expRows]);
-
-  // עיצוב עמודות
-  wsExp['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 12 }];
-  XLSX.utils.book_append_sheet(wb, wsExp, 'הוצאות');
-
-  // ── Sheet 2: תקציבים ──
-  const catHeaders = [['אייקון', 'שם תקציב', 'תקציב (₪)', 'הוצאות (₪)', 'נותר (₪)', 'ניצול %']];
-  const catRows = budgetCategories.map(c => {
-    const spent = expenses.filter(e => e.catId === c.id).reduce((s, e) => s + e.amount, 0);
-    const rem = c.amount - spent;
-    const pct = c.amount > 0 ? Math.round((spent / c.amount) * 100) : 0;
-    return [c.icon, c.name, c.amount, spent, rem, `${pct}%`];
-  });
-
-  // חוצאות ללא תקציב
-  const uncat = expenses.filter(e => !e.catId).reduce((s, e) => s + e.amount, 0);
-  if (uncat > 0) catRows.push(['—', 'ללא תקציב', '—', uncat, '—', '—']);
-
-  const wsCat = XLSX.utils.aoa_to_sheet([...catHeaders, ...catRows]);
-  wsCat['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-  XLSX.utils.book_append_sheet(wb, wsCat, 'תקציבים');
-
-  // ── ייצוא ──
-  const date = new Date().toLocaleDateString('he-IL').replace(/\//g, '-');
-  XLSX.writeFile(wb, `כסף_חכם_${date}.xlsx`);
-}
-
-function selectEmoji(btn) {
-  document.querySelectorAll('#emojiPicker .emoji-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedEmoji = btn.dataset.emoji;
-}
-function selectCatEmoji(btn) {
-  document.querySelectorAll('#catEmojiPicker .emoji-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedCatEmoji = btn.dataset.emoji;
-}
-
-function addBudgetCategory() {
-  const name = document.getElementById('catName').value.trim();
-  const amount = parseFloat(document.getElementById('catAmount').value);
-  if (!name || !amount || amount <= 0) return;
-  const income = parseFloat(document.getElementById('income').value) || 0;
-  const used = budgetCategories.reduce((s, c) => s + c.amount, 0);
-  if (used + amount > income) { alert('סכום התקציב עולה על ההכנסה!'); return; }
-  const cat = { id: Date.now(), icon: selectedCatEmoji, name, amount, color: CAT_COLORS[budgetCategories.length % CAT_COLORS.length] };
-  budgetCategories.push(cat);
-  document.getElementById('catName').value = '';
-  document.getElementById('catAmount').value = '';
-  saveLocal();
-  sbFetch('budget_categories', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
-  renderAll();
-}
-
-function removeBudgetCategory(id) {
-  budgetCategories = budgetCategories.filter(c => c.id !== id);
-  expenses.forEach(e => { if (e.catId === id) e.catId = null; });
-  saveLocal();
-  sbFetch(`budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
-  renderAll();
-}
-
-function addExpense() {
-  const name = document.getElementById('expName').value.trim();
-  const amount = parseFloat(document.getElementById('expAmount').value);
-  const catId = document.getElementById('expCategory').value;
-  if (!name || !amount || amount <= 0) return;
-  const exp = { id: Date.now(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null };
-  expenses.push(exp);
-  document.getElementById('expName').value = '';
-  document.getElementById('expAmount').value = '';
-  saveLocal();
-  sbFetch('expenses', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: exp.id, icon: exp.icon, name: exp.name, amount: exp.amount, cat_id: exp.catId, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
-  renderAll();
-}
-
-function removeExpense(i) {
-  const exp = expenses[i];
-  expenses.splice(i, 1);
-  saveLocal();
-  if (exp?.id) sbFetch(`expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
-  renderAll();
-}
-
-function updateBudget() { saveSettings(); renderAll(); }
-
-function renderAll() {
-  renderCategorySelector();
-  renderBudgetCategories();
-  renderBudgetOverviewCards();
-  renderExpenses();
-}
-
-function renderCategorySelector() {
-  const sel = document.getElementById('expCategory');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— ללא תקציב —</option>';
-  budgetCategories.forEach(c => {
-    const o = document.createElement('option');
-    o.value = c.id; o.textContent = `${c.icon} ${c.name}`;
-    sel.appendChild(o);
-  });
-  if (cur) sel.value = cur;
-}
-
-function renderBudgetCategories() {
-  const income = parseFloat(document.getElementById('income').value) || 0;
-  const used = budgetCategories.reduce((s, c) => s + c.amount, 0);
-  const unalloc = income - used;
-  const el = document.getElementById('unallocatedDisplay');
-  el.textContent = fmt(unalloc);
-  el.style.color = unalloc < 0 ? 'var(--danger)' : 'var(--teal-dark)';
-  const wrap = document.getElementById('budgetCategoryList');
-  if (!budgetCategories.length) {
-    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);padding:.6rem 0;font-size:.82rem;">עדיין אין תקציבים — הוסף את הראשון למטה 👇</div>';
-    return;
-  }
-  wrap.innerHTML = budgetCategories.map(c => {
-    const spent = expenses.filter(e => e.catId === c.id).reduce((s, e) => s + e.amount, 0);
-    const pct = c.amount > 0 ? Math.min((spent / c.amount) * 100, 100) : 0;
-    const rem = c.amount - spent; const over = rem < 0;
-    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--bg2);">
-      <span style="font-size:1rem;">${c.icon}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:.18rem;">
-          <span style="font-weight:700;font-size:.82rem;">${c.name}</span>
-          <span style="font-size:.72rem;font-weight:700;color:${over ? 'var(--danger)' : 'var(--text2)'};">${fmt(spent)} / ${fmt(c.amount)}</span>
+<!-- ════════════════════════════════
+     SETTINGS SHEET
+════════════════════════════════ -->
+<div id="settingsOverlay" onclick="closeSettings(event)">
+  <div class="settings-sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="settings-title">
+      <span>⚙️ הגדרות</span>
+      <button onclick="closeSettings()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">מראה</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">🌙 מצב מוחשך</div>
+          <div class="toggle-sub">מתאים לשימוש בחושך</div>
         </div>
-        <div style="height:5px;background:var(--teal-mid);border-radius:99px;overflow:hidden;">
-          <div style="height:5px;border-radius:99px;width:${pct}%;background:${over ? 'var(--danger)' : c.color};transition:width .4s;"></div>
+        <label class="toggle">
+          <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">רכיבי דף הבית</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">📊 כרטיסי ניווט מהיר</div>
+          <div class="toggle-sub">תקציב / חיסכון / מניות</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="showNavCards" checked onchange="saveHomePrefs()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">💰 כרטיסי סיכום</div>
+          <div class="toggle-sub">יתרה + חיסכון צפוי</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="showSummaryCards" checked onchange="saveHomePrefs()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">⚡ טיפ היום</div>
+          <div class="toggle-sub">טיפ פיננסי יומי</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="showTip" checked onchange="saveHomePrefs()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">חשבון</div>
+      <div class="toggle-row" style="border:none;">
+        <div>
+          <div class="toggle-label" id="settingsUsername">משתמש</div>
+          <div class="toggle-sub">מחובר לחשבונך</div>
+        </div>
+        <button class="btn btn-danger" onclick="doLogout()">התנתק</button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="closeSettings()" style="margin-top:.5rem;">שמור וסגור ✓</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     MAIN APP
+════════════════════════════════ -->
+<div class="container" id="appContainer" style="display:none;">
+
+  <header>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openSettings()" title="הגדרות">⚙️</button>
+    </div>
+    <div style="position:absolute;right:0;top:1.5rem;">
+      <div class="user-chip" onclick="openSettings()">
+        <span>👤</span>
+        <span id="headerUsername"></span>
+      </div>
+    </div>
+    <div class="logo-wrap">
+      <img class="logo-img" src="icon.png" alt="" onerror="this.style.display='none'">
+      <span class="logo-text">כסף חכם</span>
+    </div>
+    <div class="tagline">ניהול כלכלי לבני נוער</div>
+    <div id="syncStatus"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('home')"><span class="tab-icon">🏠</span>בית</button>
+    <button class="tab" onclick="switchTab('savings')"><span class="tab-icon">🏦</span>חיסכון</button>
+    <button class="tab" onclick="switchTab('budget')"><span class="tab-icon">📊</span>תקציב</button>
+    <button class="tab" onclick="switchTab('stocks')"><span class="tab-icon">📈</span>מניות</button>
+    <button class="tab" onclick="switchTab('tips')"><span class="tab-icon">💡</span>טיפים</button>
+  </div>
+
+  <!-- HOME -->
+  <div id="home" class="panel active">
+    <div class="card" style="background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;box-shadow:0 6px 18px rgba(61,189,181,.3);margin-bottom:1rem;">
+      <div style="font-size:1.2rem;font-weight:900;margin-bottom:.25rem;">שלום! ברוך הבא לכסף חכם 👋</div>
+      <div style="font-size:.8rem;opacity:.85;">כל מה שצריך כדי לנהל כסף בחכמה</div>
+    </div>
+    <div id="homeNavCards" class="quick-grid">
+      <div class="quick-card" onclick="switchTab('budget')"><span class="qc-icon">📊</span><div class="qc-title">מעקב תקציב</div><div class="qc-desc">עקוב אחרי ההוצאות שלך כל חודש</div></div>
+      <div class="quick-card" onclick="switchTab('savings')"><span class="qc-icon">🧮</span><div class="qc-title">מחשבון חיסכון</div><div class="qc-desc">חשב כמה תרוויח עם ריבית דריבית</div></div>
+      <div class="quick-card" onclick="switchTab('stocks')"><span class="qc-icon">📈</span><div class="qc-title">מחירי מניות</div><div class="qc-desc">חפש שווי של מניה לפי סימול</div></div>
+    </div>
+    <div id="homeSummaryCards" class="grid2" style="margin-bottom:1rem;">
+      <div class="sum-card">
+        <div class="sum-icon">💰</div>
+        <div class="sum-label">יתרת תקציב</div>
+        <div class="sum-val" id="homeRemainder">—</div>
+        <div class="sum-sub">פנויה מהכנסה חודשית</div>
+        <button class="btn btn-outline" onclick="switchTab('budget')">עדכון תקציב ←</button>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">🏦</div>
+        <div class="sum-label">חיסכון צפוי</div>
+        <div class="sum-val" id="homeSavings">—</div>
+        <div class="sum-sub">לאחר <span id="homeYears">5</span> שנים</div>
+        <button class="btn btn-outline" onclick="switchTab('savings')">עדכון חיסכון ←</button>
+      </div>
+    </div>
+    <div id="homeTipCard" class="tip-of-day">
+      <div style="font-size:1.3rem;flex-shrink:0;">⚡</div>
+      <div>
+        <div class="tod-label">טיפ היום</div>
+        <div class="tod-text" id="dailyTip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVINGS -->
+  <div id="savings" class="panel">
+
+    <!-- Add new saving -->
+    <div class="card">
+      <div class="card-title">➕ הוסף חיסכון חדש</div>
+      <div class="form-group">
+        <label>שם החיסכון</label>
+        <input type="text" id="savingName" placeholder="לדוגמה: חיסכון לאייפון...">
+      </div>
+      <div class="grid2">
+        <div class="form-group"><label>סכום התחלתי (₪)</label><input type="number" id="savingPrincipal" value="1000" min="0"></div>
+        <div class="form-group"><label>הפקדה חודשית (₪)</label><input type="number" id="savingMonthly" value="200" min="0"></div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><label>ריבית שנתית (%)</label><input type="number" id="savingRate" value="4" min="0.1" max="15" step="0.1"></div>
+        <div class="form-group"><label>תקופה (שנים)</label><input type="number" id="savingYears" value="5" min="1" max="30"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addSaving()">+ הוסף חיסכון</button>
+    </div>
+
+    <!-- Savings list -->
+    <div id="savingsList"></div>
+
+    <!-- Detail modal -->
+    <div id="savingDetailOverlay" onclick="closeSavingDetail(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:flex-end;justify-content:center;">
+      <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:820px;padding:1.5rem 1.5rem 2.5rem;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease;">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 1rem;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div style="font-size:1rem;font-weight:900;" id="detailTitle">פרטי חיסכון</div>
+          <button onclick="closeSavingDetail()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
+        </div>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BUDGET -->
+  <div id="budget" class="panel">
+    <div class="card">
+      <div class="card-title">💰 הכנסה חודשית</div>
+      <div class="form-group"><label>הכנסה חודשית כוללת (₪)</label><input type="number" id="income" value="1200" min="0" oninput="updateBudget()"></div>
+      <div class="unalloc-box">
+        <span style="font-size:.76rem;font-weight:700;color:var(--text2);">לא מחולק לתקציבים</span>
+        <span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📂 תקציבים</div>
+      <div id="budgetCategoryList"></div>
+      <div style="border-top:1.5px solid var(--bg2);margin-top:.85rem;padding-top:.85rem;">
+        <div style="font-size:.68rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">+ הוסף תקציב חדש</div>
+        <div class="emoji-row" id="catEmojiPicker">
+          <button class="emoji-btn selected" data-emoji="🍕" onclick="selectCatEmoji(this)">🍕</button>
+          <button class="emoji-btn" data-emoji="🚌" onclick="selectCatEmoji(this)">🚌</button>
+          <button class="emoji-btn" data-emoji="🎮" onclick="selectCatEmoji(this)">🎮</button>
+          <button class="emoji-btn" data-emoji="👕" onclick="selectCatEmoji(this)">👕</button>
+          <button class="emoji-btn" data-emoji="📱" onclick="selectCatEmoji(this)">📱</button>
+          <button class="emoji-btn" data-emoji="☕" onclick="selectCatEmoji(this)">☕</button>
+          <button class="emoji-btn" data-emoji="🏦" onclick="selectCatEmoji(this)">🏦</button>
+          <button class="emoji-btn" data-emoji="💊" onclick="selectCatEmoji(this)">💊</button>
+          <button class="emoji-btn" data-emoji="🎓" onclick="selectCatEmoji(this)">🎓</button>
+          <button class="emoji-btn" data-emoji="🏋️" onclick="selectCatEmoji(this)">🏋️</button>
+        </div>
+        <div class="add-row">
+          <input type="text" id="catName" placeholder="שם תקציב...">
+          <input type="number" id="catAmount" placeholder="סכום ₪" min="0">
+          <button class="btn btn-primary" onclick="addBudgetCategory()">+ הוסף</button>
         </div>
       </div>
-      <button class="exp-del" onclick="removeBudgetCategory(${c.id})">✕</button>
-    </div>`;
-  }).join('');
-}
+    </div>
+    <div id="budgetOverviewCards"></div>
+    <div class="card">
+      <div class="card-title">🛒 הוסף הוצאה</div>
+      <div class="emoji-row" id="emojiPicker">
+        <button class="emoji-btn selected" data-emoji="🍕" onclick="selectEmoji(this)">🍕</button>
+        <button class="emoji-btn" data-emoji="🚌" onclick="selectEmoji(this)">🚌</button>
+        <button class="emoji-btn" data-emoji="🎮" onclick="selectEmoji(this)">🎮</button>
+        <button class="emoji-btn" data-emoji="👕" onclick="selectEmoji(this)">👕</button>
+        <button class="emoji-btn" data-emoji="📱" onclick="selectEmoji(this)">📱</button>
+        <button class="emoji-btn" data-emoji="☕" onclick="selectEmoji(this)">☕</button>
+        <button class="emoji-btn" data-emoji="🎬" onclick="selectEmoji(this)">🎬</button>
+        <button class="emoji-btn" data-emoji="📚" onclick="selectEmoji(this)">📚</button>
+      </div>
+      <div class="add-row">
+        <input type="text" id="expName" placeholder="שם הוצאה..." style="flex:2">
+        <input type="number" id="expAmount" placeholder="סכום ₪" min="0">
+      </div>
+      <div class="form-group" style="margin-top:.5rem;"><label>שייך לתקציב</label><select id="expCategory"><option value="">— ללא תקציב —</option></select></div>
+      <button class="btn btn-primary btn-full" onclick="addExpense()" style="margin-top:.5rem;">+ הוסף הוצאה</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 כל ההוצאות</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <span style="font-size:.78rem;color:var(--text2);">כל ההוצאות החודש</span>
+        <button class="btn btn-outline" onclick="exportToExcel()" style="font-size:.75rem;padding:.4rem .9rem;">
+          📥 ייצא לאקסל
+        </button>
+      </div>
+      <div class="income-box">
+        <div><div class="income-label">הכנסה</div><div class="income-val" id="incomeDisplay">₪1,200</div></div>
+        <div style="text-align:left;"><div class="income-label">נותר</div><div class="income-val" id="remainderDisplay">₪1,200</div></div>
+      </div>
+      <div style="margin-bottom:.8rem;">
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text2);margin-bottom:.3rem;"><span>סה״כ הוצאות</span><span id="budgetPct">0%</span></div>
+        <div class="bbar-track"><div class="bbar-fill" id="budgetBarFill" style="width:0%;background:var(--teal);"></div></div>
+      </div>
+      <ul class="expense-list" id="expenseList"></ul>
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1.5px solid var(--bg2);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.78rem;color:var(--text2);">סה״כ הוצאות</span>
+        <span style="font-size:1.1rem;font-weight:900;color:var(--teal-dark);" id="totalExp">₪0</span>
+      </div>
+    </div>
+  </div>
 
-function renderBudgetOverviewCards() {
-  const wrap = document.getElementById('budgetOverviewCards');
-  if (!budgetCategories.length) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.75rem;margin-bottom:1rem;">
-    ${budgetCategories.map(c => {
-      const spent = expenses.filter(e => e.catId === c.id).reduce((s, e) => s + e.amount, 0);
-      const rem = c.amount - spent; const pct = c.amount > 0 ? Math.min((spent / c.amount) * 100, 100) : 0; const over = rem < 0;
-      const catExps = expenses.filter(e => e.catId === c.id);
-      return `<div style="background:var(--card);border:1.5px solid ${over ? 'rgba(224,112,112,.3)' : c.color + '30'};border-radius:var(--radius);padding:.9rem;position:relative;overflow:hidden;box-shadow:var(--shadow);">
-        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${over ? 'var(--danger)' : c.color};"></div>
-        <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.5rem;">
-          <span style="font-size:1.1rem;">${c.icon}</span>
-          <span style="font-weight:800;font-size:.8rem;color:var(--text);">${c.name}</span>
-          ${over ? '<span style="margin-right:auto;font-size:.58rem;background:#fde8e8;color:#c0392b;border-radius:5px;padding:1px 4px;font-weight:700;">חרגת!</span>' : ''}
-        </div>
-        <div style="font-size:1.35rem;font-weight:900;color:${over ? 'var(--danger)' : c.color};">${fmt(Math.abs(rem))}</div>
-        <div style="font-size:.68rem;color:var(--text2);margin-bottom:.5rem;">${over ? 'חרגת ב' : 'נותר מתוך'} ${fmt(c.amount)}</div>
-        <div style="height:5px;background:var(--teal-mid);border-radius:99px;overflow:hidden;margin-bottom:.5rem;">
-          <div style="height:5px;border-radius:99px;width:${pct}%;background:${over ? 'var(--danger)' : c.color};transition:width .4s;"></div>
-        </div>
-        ${!catExps.length ? '<div style="font-size:.68rem;color:var(--muted);text-align:center;">אין הוצאות עדיין</div>'
-          : `<div style="font-size:.68rem;color:var(--text2);">${catExps.slice(-2).map(e => `<div style="display:flex;justify-content:space-between;"><span>${e.icon} ${e.name}</span><span style="font-weight:700;">${fmt(e.amount)}</span></div>`).join('')}${catExps.length > 2 ? `<div style="color:var(--teal);font-weight:700;margin-top:2px;">+${catExps.length - 2} עוד</div>` : ''}</div>`}
-      </div>`;
-    }).join('')}
-  </div>`;
-}
+  <!-- STOCKS -->
+  <div id="stocks" class="panel">
+    <div class="card">
+      <div class="card-title">📈 חיפוש מניות בזמן אמת</div>
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:.85rem;line-height:1.5;">הזן סימול מניה וקבל את המחיר הנוכחי דרך Google Finance.</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <input type="text" id="stockSymbol" placeholder="לדוגמה: AAPL" style="flex:1;min-width:100px;text-transform:uppercase;letter-spacing:1px;font-weight:700;" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')fetchStock()">
+        <select id="stockExchange" style="flex:0 0 auto;width:auto;min-width:105px;">
+          <option value="NASDAQ">NASDAQ</option><option value="NYSE">NYSE</option><option value="TLV">תל אביב</option><option value="LON">לונדון</option>
+        </select>
+        <button class="btn btn-primary" onclick="fetchStock()">🔍 חפש</button>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:.68rem;color:var(--muted);">פופולריות:</span>
+        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('AAPL','NASDAQ')">AAPL 🍎</button>
+        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('TSLA','NASDAQ')">TSLA ⚡</button>
+        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('GOOGL','NASDAQ')">GOOGL</button>
+        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('MSFT','NASDAQ')">MSFT</button>
+        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('NVDA','NASDAQ')">NVDA 🎮</button>
+      </div>
+    </div>
+    <div id="stockLoading" style="display:none;text-align:center;padding:2rem;" class="card">
+      <div style="font-size:1.8rem;animation:spin 1s linear infinite;display:inline-block;">⏳</div>
+      <div style="color:var(--text2);margin-top:.5rem;font-size:.82rem;">טוען נתונים...</div>
+    </div>
+    <div id="stockError" style="display:none;" class="card">
+      <div style="text-align:center;padding:.8rem;"><div style="font-size:1.8rem;">😕</div><div style="font-weight:700;margin:.4rem 0;">לא נמצאו נתונים</div><div id="stockErrorMsg" style="color:var(--text2);font-size:.78rem;"></div></div>
+    </div>
+    <div id="stockResult" style="display:none;"></div>
+    <div class="card" id="watchlistCard" style="display:none;"><div class="card-title">⭐ רשימת מעקב</div><div id="watchlistItems"></div></div>
+    <div class="card" style="background:var(--teal-light);border:1.5px solid var(--teal-mid);">
+      <div style="display:flex;gap:.7rem;align-items:flex-start;"><span style="font-size:1.2rem;">📚</span><div><div style="font-weight:800;font-size:.85rem;margin-bottom:.18rem;">מה זו מניה?</div><div style="font-size:.76rem;color:var(--text2);line-height:1.5;">מניה היא חלק קטן בבעלות על חברה. אם החברה מצליחה, ערך המניה עולה.</div></div></div>
+    </div>
+  </div>
 
-function renderExpenses() {
-  const income = parseFloat(document.getElementById('income').value) || 0;
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
-  const pct = income > 0 ? Math.min((total / income) * 100, 100) : 0;
-  document.getElementById('totalExp').textContent = fmt(total);
-  document.getElementById('remainderDisplay').textContent = fmt(income - total);
-  document.getElementById('incomeDisplay').textContent = fmt(income);
-  document.getElementById('budgetPct').textContent = Math.round(pct) + '%';
-  const fill = document.getElementById('budgetBarFill');
-  fill.style.width = pct + '%';
-  fill.style.background = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--warn)' : 'var(--teal)';
-  const list = document.getElementById('expenseList');
-  list.innerHTML = '';
-  expenses.forEach((e, i) => {
-    const cat = budgetCategories.find(c => c.id === e.catId);
-    const li = document.createElement('li');
-    li.className = 'expense-item';
-    li.innerHTML = `<div class="expense-cat"><span class="exp-icon">${e.icon}</span><div><div class="exp-name">${e.name}</div>${cat ? `<div style="font-size:.62rem;color:${cat.color};font-weight:700;">${cat.icon} ${cat.name}</div>` : '<div style="font-size:.62rem;color:var(--muted);">ללא תקציב</div>'}</div></div><div style="display:flex;align-items:center;gap:.5rem;"><span class="exp-amount">${fmt(e.amount)}</span><button class="exp-del" onclick="removeExpense(${i})">✕</button></div>`;
-    list.appendChild(li);
-  });
-}
+  <!-- TIPS -->
+  <div id="tips" class="panel">
+    <div class="card" style="background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;box-shadow:0 6px 18px rgba(61,189,181,.3);margin-bottom:1rem;">
+      <div style="font-size:.66rem;font-weight:800;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;">כלל הזהב</div>
+      <div style="font-size:1.1rem;font-weight:900;">שלם לעצמך ראשון 💜</div>
+      <div style="font-size:.78rem;opacity:.85;margin-top:.3rem;line-height:1.5;">בכל פעם שמגיע לך כסף — העבר 20% לחיסכון לפני שאתה מוציא משהו.</div>
+    </div>
+    <div class="tip-card"><div class="tip-icon">⚡</div><div><div class="tip-badge">ריבית דריבית</div><div class="tip-title">₪100 היום שווים הרבה יותר מחר</div><div class="tip-text">₪5,000 שמניחים בגיל 16 עם 5% ריבית יהפכו ל-₪21,600 עד גיל 46.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🧠</div><div><div class="tip-badge">פסיכולוגיה</div><div class="tip-title">כלל 24 שעות לקניות אימפולסיביות</div><div class="tip-text">לפני כל קנייה של יותר מ-₪100 — המתן יום שלם. 80% מהפעמים תגלה שלא באמת צריך.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">📱</div><div><div class="tip-badge">הרגל חודשי</div><div class="tip-title">סקור את ההוצאות שלך</div><div class="tip-text">בסוף כל חודש, בדוק לאן הלך הכסף. רוב הצעירים מופתעים מכמה הולך על קפה ומנויים.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🎯</div><div><div class="tip-badge">יעדים</div><div class="tip-title">יעדים ספציפיים עובדים יותר טוב</div><div class="tip-text">"חוסך ₪3,500 לאייפון בתוך 8 חודשים" עדיף על "אני רוצה לחסוך".</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אוטומציה</div><div class="tip-title">הגדר העברה אוטומטית</div><div class="tip-text">בקש מהורים לעזור להגדיר העברה אוטומטית לחיסכון ביום שמגיע הכסף.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🛒</div><div><div class="tip-badge">קנייה חכמה</div><div class="tip-title">השווה מחירים תמיד</div><div class="tip-text">לפני כל קנייה — בדוק את המחיר באמזון ו-Zap. 5 דקות יכולות לחסוך עשרות שקלים.</div></div></div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ════ LIBRARIES ════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- ════ JS FILES — סדר הטעינה חשוב! ════ -->
+<script src="js/supabase.js"></script>   <!-- state + DB helpers + fmt() -->
+<script src="js/auth.js"></script>        <!-- login / register / logout -->
+<script src="js/settings.js"></script>    <!-- dark mode + home prefs -->
+<script src="js/savings.js"></script>     <!-- savings calculator -->
+<script src="js/budget.js"></script>      <!-- budget + expenses -->
+<script src="js/stocks.js"></script>      <!-- stocks + watchlist -->
+<script src="js/app.js"></script>         <!-- tabs + home + init -->
+
+</body>
+</html>
