@@ -8,43 +8,7 @@ function switchTab(name) {
   document.getElementById(name).classList.add('active');
   if (name === 'home') updateHome();
 }
-// פונקציה לייצוא הנתונים
-function exportToExcel(data, fileName) {
-    if (!data || data.length === 0) {
-        alert("אין נתונים לייצוא");
-        return;
-    }
 
-    // הגדרת הכותרות (Headers)
-    const headers = Object.keys(data[0]).join(",");
-    
-    // הפיכת הנתונים לשורות
-    const rows = data.map(item => {
-        return Object.values(item).map(value => `"${value}"`).join(",");
-    });
-
-    // הוספת BOM כדי שאקסל יזהה עברית כמו שצריך
-    const csvContent = "\uFEFF" + headers + "\n" + rows.join("\n");
-
-    // יצירת קובץ להורדה
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${fileName}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// חיבור הכפתור לפעולה
-document.getElementById('export-btn').addEventListener('click', () => {
-    // כאן עליך להעביר את המערך של התקציבים או ההוצאות שלך
-    // לדוגמה, אם הנתונים שלך שמורים במשתנה בשם allExpenses:
-    exportToExcel(allExpenses, "תקציב_והוצאות_נוער");
-});
 // ════════════════════════════════
 // HOME
 // ════════════════════════════════
@@ -91,7 +55,7 @@ if (savedSession) {
 }
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+  try {
     navigator.serviceWorker.register('/teen-finance/sw.js').catch(() => {});
-  });
+  } catch(e) {}
 }
