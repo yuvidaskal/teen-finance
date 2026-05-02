@@ -2,7 +2,15 @@
 // EXPORT TO EXCEL
 // ════════════════════════════════
 function exportToExcel() {
-  const income = parseFloat(document.getElementById('income').value) || 0;
+  if (expenses.length === 0 && budgetCategories.length === 0) {
+    const syncEl = document.getElementById('syncStatus');
+    if (syncEl && syncEl.textContent.includes('מסנכרן')) {
+      alert('הנתונים עדיין נטענים — המתן לסיום הסנכרון ונסה שוב');
+    } else {
+      alert('אין נתונים לייצוא — הוסף הוצאות או תקציבים תחילה');
+    }
+    return;
+  }
   const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
   const wb = XLSX.utils.book_new();
 
