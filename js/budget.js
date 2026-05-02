@@ -1,6 +1,48 @@
 // ════════════════════════════════
-// BUDGET & EXPENSES
+// EXPORT TO EXCEL
 // ════════════════════════════════
+function exportToExcel() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: הוצאות ──
+  const expHeaders = [['אייקון', 'שם הוצאה', 'תקציב', 'סכום (₪)']];
+  const expRows = expenses.map(e => {
+    const cat = budgetCategories.find(c => c.id === e.catId);
+    return [e.icon, e.name, cat ? `${cat.icon} ${cat.name}` : 'ללא תקציב', e.amount];
+  });
+  expRows.push(['', '', 'סה״כ הוצאות', totalExp]);
+  expRows.push(['', '', 'הכנסה', income]);
+  expRows.push(['', '', 'נותר', income - totalExp]);
+
+  const wsExp = XLSX.utils.aoa_to_sheet([...expHeaders, ...expRows]);
+
+  // עיצוב עמודות
+  wsExp['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, wsExp, 'הוצאות');
+
+  // ── Sheet 2: תקציבים ──
+  const catHeaders = [['אייקון', 'שם תקציב', 'תקציב (₪)', 'הוצאות (₪)', 'נותר (₪)', 'ניצול %']];
+  const catRows = budgetCategories.map(c => {
+    const spent = expenses.filter(e => e.catId === c.id).reduce((s, e) => s + e.amount, 0);
+    const rem = c.amount - spent;
+    const pct = c.amount > 0 ? Math.round((spent / c.amount) * 100) : 0;
+    return [c.icon, c.name, c.amount, spent, rem, `${pct}%`];
+  });
+
+  // חוצאות ללא תקציב
+  const uncat = expenses.filter(e => !e.catId).reduce((s, e) => s + e.amount, 0);
+  if (uncat > 0) catRows.push(['—', 'ללא תקציב', '—', uncat, '—', '—']);
+
+  const wsCat = XLSX.utils.aoa_to_sheet([...catHeaders, ...catRows]);
+  wsCat['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, wsCat, 'תקציבים');
+
+  // ── ייצוא ──
+  const date = new Date().toLocaleDateString('he-IL').replace(/\//g, '-');
+  XLSX.writeFile(wb, `כסף_חכם_${date}.xlsx`);
+}
 
 function selectEmoji(btn) {
   document.querySelectorAll('#emojiPicker .emoji-btn').forEach(b => b.classList.remove('selected'));
