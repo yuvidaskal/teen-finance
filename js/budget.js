@@ -1,4 +1,98 @@
 // ════════════════════════════════
+// RECOMMENDED SPLIT (50/30/20)
+// ════════════════════════════════
+const SPLIT_RULES = [
+  { name: 'הכרחי', icon: '🛒', pct: 50, color: '#3dbdb5', desc: 'אוכל, תחבורה, הוצאות חיוניות' },
+  { name: 'פנאי ובידור', icon: '🎮', pct: 30, color: '#f59e0b', desc: 'בילויים, קניות, חברים' },
+  { name: 'חיסכון', icon: '🏦', pct: 20, color: '#10b981', desc: 'חיסכון והשקעה לעתיד' },
+];
+
+function renderSplitPreview() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const wrap = document.getElementById('splitPreview');
+  if (!wrap) return;
+  if (income <= 0) { wrap.innerHTML = '<div style="font-size:.78rem;color:var(--muted);text-align:center;padding:.5rem 0;">הזן הכנסה כדי לראות המלצה</div>'; return; }
+  wrap.innerHTML = SPLIT_RULES.map(r => {
+    const amount = Math.round(income * r.pct / 100);
+    return `<div style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;">
+      <span style="font-size:1.1rem;">${r.icon}</span>
+      <div style="flex:1;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.18rem;">
+          <span style="font-size:.8rem;font-weight:700;">${r.name} <span style="color:var(--muted);font-weight:400;">(${r.pct}%)</span></span>
+          <span style="font-size:.8rem;font-weight:800;color:${r.color};">${fmt(amount)}</span>
+        </div>
+        <div style="height:5px;background:var(--bg2);border-radius:99px;overflow:hidden;">
+          <div style="height:5px;width:${r.pct}%;background:${r.color};border-radius:99px;"></div>
+        </div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:.1rem;">${r.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function applyRecommendedSplit() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  if (income <= 0) { alert('הזן הכנסה תחילה'); return; }
+  if (budgetCategories.length > 0) {
+    if (!confirm('פעולה זו תחליף את התקציבים הקיימים. להמשיך?')) return;
+    for (const cat of budgetCategories) {
+      await sbFetch(`budget_categories?id=eq.${cat.id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
+    }
+    budgetCategories = [];
+    expenses.forEach(e => { e.catId = null; });
+  }
+  for (const r of SPLIT_RULES) {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    const cat = { id, icon: r.icon, name: r.name, amount: Math.round(income * r.pct / 100), color: r.color };
+    budgetCategories.push(cat);
+    await sbFetch('budget_categories', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
+  }
+  saveLocal();
+  renderAll();
+}
+
+// ════════════════════════════════
+// EDIT BUDGET CATEGORY
+// ════════════════════════════════
+function openEditCat(id) {
+  const cat = budgetCategories.find(c => c.id === id);
+  if (!cat) return;
+  document.getElementById('editCatId').value = id;
+  document.getElementById('editCatName').value = cat.name;
+  document.getElementById('editCatAmount').value = cat.amount;
+  document.getElementById('editCatOverlay').style.display = 'flex';
+}
+
+function closeEditCat(e) {
+  if (!e || e.target === document.getElementById('editCatOverlay')) {
+    document.getElementById('editCatOverlay').style.display = 'none';
+  }
+}
+
+async function saveEditCat() {
+  const id = parseInt(document.getElementById('editCatId').value);
+  const name = document.getElementById('editCatName').value.trim();
+  const amount = parseFloat(document.getElementById('editCatAmount').value);
+  if (!name || !amount || amount <= 0) { alert('נא למלא שם וסכום תקין'); return; }
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const usedExcludingThis = budgetCategories.filter(c => c.id !== id).reduce((s, c) => s + c.amount, 0);
+  if (usedExcludingThis + amount > income) { alert('הסכום עולה על ההכנסה!'); return; }
+  const cat = budgetCategories.find(c => c.id === id);
+  if (!cat) return;
+  cat.name = name; cat.amount = amount;
+  saveLocal();
+  try {
+    await sbFetch(`budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ name, amount })
+    });
+  } catch(e) {}
+  closeEditCat();
+  renderAll();
+}
+
+// ════════════════════════════════
 // EXPORT TO EXCEL
 // ════════════════════════════════
 function exportToExcel() {
@@ -109,13 +203,14 @@ function removeExpense(i) {
   renderAll();
 }
 
-function updateBudget() { saveSettings(); renderAll(); }
+function updateBudget() { saveSettings(); renderAll(); renderSplitPreview(); }
 
 function renderAll() {
   renderCategorySelector();
   renderBudgetCategories();
   renderBudgetOverviewCards();
   renderExpenses();
+  renderSplitPreview();
 }
 
 function renderCategorySelector() {
@@ -157,6 +252,7 @@ function renderBudgetCategories() {
           <div style="height:5px;border-radius:99px;width:${pct}%;background:${over ? 'var(--danger)' : c.color};transition:width .4s;"></div>
         </div>
       </div>
+      <button class="exp-del" style="color:var(--teal);opacity:1;font-size:.8rem;margin-left:.2rem;" onclick="openEditCat(${c.id})" title="ערוך">✏️</button>
       <button class="exp-del" onclick="removeBudgetCategory(${c.id})">✕</button>
     </div>`;
   }).join('');
