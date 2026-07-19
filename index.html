@@ -236,6 +236,21 @@
 
   <!-- BUDGET -->
   <div id="budget" class="panel">
+
+    <!-- Edit budget modal -->
+    <div id="editCatOverlay" onclick="closeEditCat(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
+      <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
+        <div style="font-size:1rem;font-weight:900;margin-bottom:1rem;">✏️ ערוך תקציב</div>
+        <div class="form-group"><label>שם תקציב</label><input type="text" id="editCatName" placeholder="שם תקציב..."></div>
+        <div class="form-group"><label>סכום (₪)</label><input type="number" id="editCatAmount" placeholder="סכום ₪" min="0"></div>
+        <input type="hidden" id="editCatId">
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveEditCat()">שמור ✓</button>
+          <button class="btn btn-outline" style="flex:1;" onclick="closeEditCat()">ביטול</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">💰 הכנסה חודשית</div>
       <div class="form-group"><label>הכנסה חודשית כוללת (₪)</label><input type="number" id="income" value="1200" min="0" oninput="updateBudget()"></div>
@@ -243,7 +258,17 @@
         <span style="font-size:.76rem;font-weight:700;color:var(--text2);">לא מחולק לתקציבים</span>
         <span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span>
       </div>
+
+      <!-- Recommended split -->
+      <div id="recommendedSplit" style="margin-top:.85rem;padding-top:.85rem;border-top:1.5px solid var(--bg2);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;">
+          <span style="font-size:.72rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">💡 חלוקה מומלצת</span>
+          <button class="btn btn-primary" onclick="applyRecommendedSplit()" style="font-size:.72rem;padding:.35rem .8rem;">החל המלצה ←</button>
+        </div>
+        <div id="splitPreview"></div>
+      </div>
     </div>
+
     <div class="card">
       <div class="card-title">📂 תקציבים</div>
       <div id="budgetCategoryList"></div>
@@ -354,12 +379,48 @@
       <div style="font-size:1.1rem;font-weight:900;">שלם לעצמך ראשון 💜</div>
       <div style="font-size:.78rem;opacity:.85;margin-top:.3rem;line-height:1.5;">בכל פעם שמגיע לך כסף — העבר 20% לחיסכון לפני שאתה מוציא משהו.</div>
     </div>
-    <div class="tip-card"><div class="tip-icon">⚡</div><div><div class="tip-badge">ריבית דריבית</div><div class="tip-title">₪100 היום שווים הרבה יותר מחר</div><div class="tip-text">₪5,000 שמניחים בגיל 16 עם 5% ריבית יהפכו ל-₪21,600 עד גיל 46.</div></div></div>
-    <div class="tip-card"><div class="tip-icon">🧠</div><div><div class="tip-badge">פסיכולוגיה</div><div class="tip-title">כלל 24 שעות לקניות אימפולסיביות</div><div class="tip-text">לפני כל קנייה של יותר מ-₪100 — המתן יום שלם. 80% מהפעמים תגלה שלא באמת צריך.</div></div></div>
-    <div class="tip-card"><div class="tip-icon">📱</div><div><div class="tip-badge">הרגל חודשי</div><div class="tip-title">סקור את ההוצאות שלך</div><div class="tip-text">בסוף כל חודש, בדוק לאן הלך הכסף. רוב הצעירים מופתעים מכמה הולך על קפה ומנויים.</div></div></div>
-    <div class="tip-card"><div class="tip-icon">🎯</div><div><div class="tip-badge">יעדים</div><div class="tip-title">יעדים ספציפיים עובדים יותר טוב</div><div class="tip-text">"חוסך ₪3,500 לאייפון בתוך 8 חודשים" עדיף על "אני רוצה לחסוך".</div></div></div>
-    <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אוטומציה</div><div class="tip-title">הגדר העברה אוטומטית</div><div class="tip-text">בקש מהורים לעזור להגדיר העברה אוטומטית לחיסכון ביום שמגיע הכסף.</div></div></div>
-    <div class="tip-card"><div class="tip-icon">🛒</div><div><div class="tip-badge">קנייה חכמה</div><div class="tip-title">השווה מחירים תמיד</div><div class="tip-text">לפני כל קנייה — בדוק את המחיר באמזון ו-Zap. 5 דקות יכולות לחסוך עשרות שקלים.</div></div></div>
+
+    <!-- Tips category tabs -->
+    <div style="display:flex;gap:.4rem;margin-bottom:1rem;">
+      <button class="btn btn-primary" id="tipTabGeneral" onclick="switchTipTab('general')" style="flex:1;font-size:.78rem;padding:.5rem;">💡 כללי</button>
+      <button class="btn btn-outline" id="tipTabInvest" onclick="switchTipTab('invest')" style="flex:1;font-size:.78rem;padding:.5rem;">📈 השקעות</button>
+    </div>
+
+    <!-- General tips -->
+    <div id="tipSectionGeneral">
+      <div class="tip-card"><div class="tip-icon">⚡</div><div><div class="tip-badge">ריבית דריבית</div><div class="tip-title">₪100 היום שווים הרבה יותר מחר</div><div class="tip-text">₪5,000 שמניחים בגיל 16 עם 5% ריבית יהפכו ל-₪21,600 עד גיל 46.</div></div></div>
+      <div class="tip-card"><div class="tip-icon">🧠</div><div><div class="tip-badge">פסיכולוגיה</div><div class="tip-title">כלל 24 שעות לקניות אימפולסיביות</div><div class="tip-text">לפני כל קנייה של יותר מ-₪100 — המתן יום שלם. 80% מהפעמים תגלה שלא באמת צריך.</div></div></div>
+      <div class="tip-card"><div class="tip-icon">📱</div><div><div class="tip-badge">הרגל חודשי</div><div class="tip-title">סקור את ההוצאות שלך</div><div class="tip-text">בסוף כל חודש, בדוק לאן הלך הכסף. רוב הצעירים מופתעים מכמה הולך על קפה ומנויים.</div></div></div>
+      <div class="tip-card"><div class="tip-icon">🎯</div><div><div class="tip-badge">יעדים</div><div class="tip-title">יעדים ספציפיים עובדים יותר טוב</div><div class="tip-text">"חוסך ₪3,500 לאייפון בתוך 8 חודשים" עדיף על "אני רוצה לחסוך".</div></div></div>
+      <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אוטומציה</div><div class="tip-title">הגדר העברה אוטומטית</div><div class="tip-text">בקש מהורים לעזור להגדיר העברה אוטומטית לחיסכון ביום שמגיע הכסף.</div></div></div>
+      <div class="tip-card"><div class="tip-icon">🛒</div><div><div class="tip-badge">קנייה חכמה</div><div class="tip-title">השווה מחירים תמיד</div><div class="tip-text">לפני כל קנייה — בדוק את המחיר באמזון ו-Zap. 5 דקות יכולות לחסוך עשרות שקלים.</div></div></div>
+    </div>
+
+    <!-- Investment tips -->
+    <div id="tipSectionInvest" style="display:none;">
+
+      <!-- Intro card -->
+      <div class="card" style="background:linear-gradient(135deg,#1a3a5c,#1e4d7a);color:white;border:none;box-shadow:0 6px 18px rgba(30,77,122,.35);margin-bottom:1rem;">
+        <div style="font-size:.66rem;font-weight:800;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;">למה להשקיע?</div>
+        <div style="font-size:1.05rem;font-weight:900;">הכסף שלך יכול לעבוד בשבילך 💼</div>
+        <div style="font-size:.78rem;opacity:.85;margin-top:.3rem;line-height:1.5;">חיסכון בבנק נותן ~3% בשנה. השקעה במדד S&P 500 נתנה בממוצע ~10% בשנה היסטורית. ההבדל לאורך שנים הוא עצום.</div>
+      </div>
+
+      <div class="tip-card"><div class="tip-icon">📊</div><div><div class="tip-badge">מושגי יסוד</div><div class="tip-title">מה זה מדד?</div><div class="tip-text">מדד הוא סל של מניות רבות יחד. S&P 500 למשל מכיל את 500 החברות הגדולות בארה"ב — אפל, גוגל, מיקרוסופט ועוד. במקום לבחור מניה אחת ולסכן הכל, אתה פורס את הכסף על מאות חברות.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">🏦</div><div><div class="tip-badge">איפה משקיעים?</div><div class="tip-title">ברוקרים בישראל</div><div class="tip-text">כדי להשקיע צריך חשבון ברוקר. ברוקרים פופולריים בישראל: מיטב, אקסלנס, IBI, פסגות. עד גיל 18 צריך הורה שיפתח את החשבון בשמך — זה פשוט יותר ממה שנשמע.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אסטרטגיה</div><div class="tip-title">DCA — השקעה חודשית קבועה</div><div class="tip-text">במקום לנסות "לתזמן את השוק" — השקע סכום קבוע כל חודש, בין אם השוק עולה ובין אם יורד. זו האסטרטגיה שמומלצת על ידי רוב מומחי ההשקעות לטווח ארוך.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">⚠️</div><div><div class="tip-badge">חשוב לדעת</div><div class="tip-title">השקעה היא לטווח ארוך</div><div class="tip-text">השוק יכול לרדת בטווח הקצר — זה נורמלי לחלוטין. מי שהשקיע ב-S&P 500 לפני משבר 2008 והמשיך — הכפיל את כספו עד 2013. הסבלנות היא הנשק הגדול ביותר של המשקיע.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">🇮🇱</div><div><div class="tip-badge">שוק מקומי</div><div class="tip-title">מדד ת"א 125</div><div class="tip-text">בדיוק כמו S&P 500 אבל לישראל — מכיל את 125 החברות הגדולות בבורסה בתל אביב. פחות מגוון מהמדד האמריקאי, אבל ללא חשיפה לסיכון מטבע.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">💡</div><div><div class="tip-badge">טיפ מעשי</div><div class="tip-title">ETF — הדרך הפשוטה להשקיע במדד</div><div class="tip-text">ETF (קרן סל) היא מוצר שעוקב אחרי מדד ונסחר כמו מניה. לדוגמה: SPY עוקב אחרי S&P 500. אפשר לקנות אחד ממש כמו שקונים מניה של חברה — פשוט, זול ויעיל.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">🧮</div><div><div class="tip-badge">דוגמה מחשבונית</div><div class="tip-title">₪500 בחודש — מה ההבדל?</div><div class="tip-text">₪500/חודש למשך 10 שנים: בבנק (3%) = ₪70,000. בקרן מדד (8%) = ₪91,000. בS&P 500 היסטורית (10%) = ₪102,000. ההבדל בין בנק למדד: ₪32,000 — בלי לעשות כלום נוסף.</div></div></div>
+
+    </div>
   </div>
 
 </div><!-- /container -->
