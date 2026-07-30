@@ -237,6 +237,31 @@
   <!-- BUDGET -->
   <div id="budget" class="panel">
 
+    <!-- Edit expense modal -->
+    <div id="editExpOverlay" onclick="closeEditExp(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
+      <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
+        <div style="font-size:1rem;font-weight:900;margin-bottom:1rem;">✏️ ערוך הוצאה</div>
+        <div class="emoji-row" id="editExpEmojiPicker">
+          <button class="emoji-btn selected" data-emoji="🍕" onclick="selectEditExpEmoji(this)">🍕</button>
+          <button class="emoji-btn" data-emoji="🚌" onclick="selectEditExpEmoji(this)">🚌</button>
+          <button class="emoji-btn" data-emoji="🎮" onclick="selectEditExpEmoji(this)">🎮</button>
+          <button class="emoji-btn" data-emoji="👕" onclick="selectEditExpEmoji(this)">👕</button>
+          <button class="emoji-btn" data-emoji="📱" onclick="selectEditExpEmoji(this)">📱</button>
+          <button class="emoji-btn" data-emoji="☕" onclick="selectEditExpEmoji(this)">☕</button>
+          <button class="emoji-btn" data-emoji="🎬" onclick="selectEditExpEmoji(this)">🎬</button>
+          <button class="emoji-btn" data-emoji="📚" onclick="selectEditExpEmoji(this)">📚</button>
+        </div>
+        <div class="form-group"><label>שם הוצאה</label><input type="text" id="editExpName" placeholder="שם הוצאה..."></div>
+        <div class="form-group"><label>סכום (₪)</label><input type="number" id="editExpAmount" placeholder="סכום ₪" min="0"></div>
+        <div class="form-group"><label>תקציב</label><select id="editExpCategory"><option value="">— ללא תקציב —</option></select></div>
+        <input type="hidden" id="editExpIndex">
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveEditExp()">שמור ✓</button>
+          <button class="btn btn-outline" style="flex:1;" onclick="closeEditExp()">ביטול</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Edit budget modal -->
     <div id="editCatOverlay" onclick="closeEditCat(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
       <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
