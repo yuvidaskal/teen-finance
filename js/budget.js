@@ -302,7 +302,91 @@ function renderExpenses() {
     const cat = budgetCategories.find(c => c.id === e.catId);
     const li = document.createElement('li');
     li.className = 'expense-item';
-    li.innerHTML = `<div class="expense-cat"><span class="exp-icon">${e.icon}</span><div><div class="exp-name">${e.name}</div>${cat ? `<div style="font-size:.62rem;color:${cat.color};font-weight:700;">${cat.icon} ${cat.name}</div>` : '<div style="font-size:.62rem;color:var(--muted);">ללא תקציב</div>'}</div></div><div style="display:flex;align-items:center;gap:.5rem;"><span class="exp-amount">${fmt(e.amount)}</span><button class="exp-del" onclick="removeExpense(${i})">✕</button></div>`;
+    li.innerHTML = `
+      <div class="expense-cat">
+        <span class="exp-icon">${e.icon}</span>
+        <div>
+          <div class="exp-name">${e.name}</div>
+          ${cat ? `<div style="font-size:.62rem;color:${cat.color};font-weight:700;">${cat.icon} ${cat.name}</div>` : '<div style="font-size:.62rem;color:var(--muted);">ללא תקציב</div>'}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <span class="exp-amount">${fmt(e.amount)}</span>
+        <button class="exp-del" style="color:var(--teal);opacity:1;font-size:.8rem;" onclick="openEditExp(${i})" title="ערוך">✏️</button>
+        <button class="exp-del" onclick="removeExpense(${i})">✕</button>
+      </div>`;
     list.appendChild(li);
   });
+}
+
+// ════════════════════════════════
+// EDIT EXPENSE
+// ════════════════════════════════
+function openEditExp(index) {
+  const exp = expenses[index];
+  if (!exp) return;
+  document.getElementById('editExpIndex').value = index;
+  document.getElementById('editExpName').value = exp.name;
+  document.getElementById('editExpAmount').value = exp.amount;
+
+  // מלא את רשימת התקציבים
+  const sel = document.getElementById('editExpCategory');
+  sel.innerHTML = '<option value="">— ללא תקציב —</option>';
+  budgetCategories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.icon} ${c.name}`;
+    if (c.id === exp.catId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  // סמן האייקון הנוכחי
+  document.querySelectorAll('#editExpEmojiPicker .emoji-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.emoji === exp.icon);
+  });
+  selectedEditExpEmoji = exp.icon;
+
+  document.getElementById('editExpOverlay').style.display = 'flex';
+}
+
+function closeEditExp(e) {
+  if (!e || e.target === document.getElementById('editExpOverlay')) {
+    document.getElementById('editExpOverlay').style.display = 'none';
+  }
+}
+
+function selectEditExpEmoji(btn) {
+  document.querySelectorAll('#editExpEmojiPicker .emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedEditExpEmoji = btn.dataset.emoji;
+}
+
+let selectedEditExpEmoji = '🍕';
+
+async function saveEditExp() {
+  const index = parseInt(document.getElementById('editExpIndex').value);
+  const name = document.getElementById('editExpName').value.trim();
+  const amount = parseFloat(document.getElementById('editExpAmount').value);
+  const catId = document.getElementById('editExpCategory').value;
+  if (!name || !amount || amount <= 0) { alert('נא למלא שם וסכום תקין'); return; }
+
+  const exp = expenses[index];
+  if (!exp) return;
+
+  exp.name = name;
+  exp.amount = amount;
+  exp.icon = selectedEditExpEmoji;
+  exp.catId = catId ? parseInt(catId) : null;
+
+  saveLocal();
+  try {
+    await sbFetch(`expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ name: exp.name, amount: exp.amount, icon: exp.icon, cat_id: exp.catId })
+    });
+  } catch(e) {}
+
+  closeEditExp();
+  renderAll();
 }
