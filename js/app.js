@@ -1,8 +1,21 @@
 // ════════════════════════════════
+// TIP TABS
+// ════════════════════════════════
+function switchTipTab(tab) {
+  const isInvest = tab === 'invest';
+  document.getElementById('tipSectionGeneral').style.display = isInvest ? 'none' : 'block';
+  document.getElementById('tipSectionInvest').style.display = isInvest ? 'block' : 'none';
+  document.getElementById('tipTabGeneral').className = isInvest ? 'btn btn-outline' : 'btn btn-primary';
+  document.getElementById('tipTabInvest').className = isInvest ? 'btn btn-primary' : 'btn btn-outline';
+  // שמור העדפה
+  localStorage.setItem('kc_tipTab', tab);
+}
+
+// ════════════════════════════════
 // TABS
 // ════════════════════════════════
 function switchTab(name) {
-  const names = ['home', 'savings', 'budget', 'stocks', 'tips'];
+  const names = ['home', 'savings', 'budget', 'tips'];
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById(name).classList.add('active');
