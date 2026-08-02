@@ -156,7 +156,6 @@
     <button class="tab active" onclick="switchTab('home')"><span class="tab-icon">🏠</span>בית</button>
     <button class="tab" onclick="switchTab('savings')"><span class="tab-icon">🏦</span>חיסכון</button>
     <button class="tab" onclick="switchTab('budget')"><span class="tab-icon">📊</span>תקציב</button>
-    <button class="tab" onclick="switchTab('stocks')"><span class="tab-icon">📈</span>מניות</button>
     <button class="tab" onclick="switchTab('tips')"><span class="tab-icon">💡</span>טיפים</button>
   </div>
 
@@ -169,7 +168,6 @@
     <div id="homeNavCards" class="quick-grid">
       <div class="quick-card" onclick="switchTab('budget')"><span class="qc-icon">📊</span><div class="qc-title">מעקב תקציב</div><div class="qc-desc">עקוב אחרי ההוצאות שלך כל חודש</div></div>
       <div class="quick-card" onclick="switchTab('savings')"><span class="qc-icon">🧮</span><div class="qc-title">מחשבון חיסכון</div><div class="qc-desc">חשב כמה תרוויח עם ריבית דריבית</div></div>
-      <div class="quick-card" onclick="switchTab('stocks')"><span class="qc-icon">📈</span><div class="qc-title">מחירי מניות</div><div class="qc-desc">חפש שווי של מניה לפי סימול</div></div>
     </div>
     <div id="homeSummaryCards" class="grid2" style="margin-bottom:1rem;">
       <div class="sum-card">
@@ -362,41 +360,6 @@
     </div>
   </div>
 
-  <!-- STOCKS -->
-  <div id="stocks" class="panel">
-    <div class="card">
-      <div class="card-title">📈 חיפוש מניות בזמן אמת</div>
-      <div style="font-size:.78rem;color:var(--text2);margin-bottom:.85rem;line-height:1.5;">הזן סימול מניה וקבל את המחיר הנוכחי דרך Google Finance.</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <input type="text" id="stockSymbol" placeholder="לדוגמה: AAPL" style="flex:1;min-width:100px;text-transform:uppercase;letter-spacing:1px;font-weight:700;" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')fetchStock()">
-        <select id="stockExchange" style="flex:0 0 auto;width:auto;min-width:105px;">
-          <option value="NASDAQ">NASDAQ</option><option value="NYSE">NYSE</option><option value="TLV">תל אביב</option><option value="LON">לונדון</option>
-        </select>
-        <button class="btn btn-primary" onclick="fetchStock()">🔍 חפש</button>
-      </div>
-      <div style="margin-top:.75rem;display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:.68rem;color:var(--muted);">פופולריות:</span>
-        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('AAPL','NASDAQ')">AAPL 🍎</button>
-        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('TSLA','NASDAQ')">TSLA ⚡</button>
-        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('GOOGL','NASDAQ')">GOOGL</button>
-        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('MSFT','NASDAQ')">MSFT</button>
-        <button class="emoji-btn" style="font-size:.72rem;padding:3px 8px;" onclick="quickStock('NVDA','NASDAQ')">NVDA 🎮</button>
-      </div>
-    </div>
-    <div id="stockLoading" style="display:none;text-align:center;padding:2rem;" class="card">
-      <div style="font-size:1.8rem;animation:spin 1s linear infinite;display:inline-block;">⏳</div>
-      <div style="color:var(--text2);margin-top:.5rem;font-size:.82rem;">טוען נתונים...</div>
-    </div>
-    <div id="stockError" style="display:none;" class="card">
-      <div style="text-align:center;padding:.8rem;"><div style="font-size:1.8rem;">😕</div><div style="font-weight:700;margin:.4rem 0;">לא נמצאו נתונים</div><div id="stockErrorMsg" style="color:var(--text2);font-size:.78rem;"></div></div>
-    </div>
-    <div id="stockResult" style="display:none;"></div>
-    <div class="card" id="watchlistCard" style="display:none;"><div class="card-title">⭐ רשימת מעקב</div><div id="watchlistItems"></div></div>
-    <div class="card" style="background:var(--teal-light);border:1.5px solid var(--teal-mid);">
-      <div style="display:flex;gap:.7rem;align-items:flex-start;"><span style="font-size:1.2rem;">📚</span><div><div style="font-weight:800;font-size:.85rem;margin-bottom:.18rem;">מה זו מניה?</div><div style="font-size:.76rem;color:var(--text2);line-height:1.5;">מניה היא חלק קטן בבעלות על חברה. אם החברה מצליחה, ערך המניה עולה.</div></div></div>
-    </div>
-  </div>
-
   <!-- TIPS -->
   <div id="tips" class="panel">
     <div class="card" style="background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;box-shadow:0 6px 18px rgba(61,189,181,.3);margin-bottom:1rem;">
@@ -419,6 +382,10 @@
       <div class="tip-card"><div class="tip-icon">🎯</div><div><div class="tip-badge">יעדים</div><div class="tip-title">יעדים ספציפיים עובדים יותר טוב</div><div class="tip-text">"חוסך ₪3,500 לאייפון בתוך 8 חודשים" עדיף על "אני רוצה לחסוך".</div></div></div>
       <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אוטומציה</div><div class="tip-title">הגדר העברה אוטומטית</div><div class="tip-text">בקש מהורים לעזור להגדיר העברה אוטומטית לחיסכון ביום שמגיע הכסף.</div></div></div>
       <div class="tip-card"><div class="tip-icon">🛒</div><div><div class="tip-badge">קנייה חכמה</div><div class="tip-title">השווה מחירים תמיד</div><div class="tip-text">לפני כל קנייה — בדוק את המחיר באמזון ו-Zap. 5 דקות יכולות לחסוך עשרות שקלים.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">🤖</div><div><div class="tip-badge">כלי AI</div><div class="tip-title">התייעץ עם AI בנושאי כסף</div><div class="tip-text">לא בטוח אם כדאי לקנות משהו? תשאל Claude, ChatGPT או כל AI אחר. תאר את המצב הכלכלי שלך ושאל — "האם זה שווה את המחיר?", "איך אחסוך לזה מהר יותר?" — תקבל תשובה מותאמת אישית, בלי לשפוט ובלי עלות.</div></div></div>
+
+      <div class="tip-card"><div class="tip-icon">📊</div><div><div class="tip-badge">הרגל חשוב</div><div class="tip-title">ייצא לאקסל אחת לחודש</div><div class="tip-text">בסוף כל חודש לחץ על "ייצא לאקסל" בעמוד התקציב ושמור את הקובץ. למה? כי ככה תוכל לראות אחרי 3 חודשים — "על מה הוצאתי הכי הרבה?", "האם אני מוציא יותר מהחודש שעבר?" — זה כמו מראה של ההרגלים הכלכליים שלך, ומה שמודד — משתפר.</div></div></div>
     </div>
 
     <!-- Investment tips -->
@@ -459,7 +426,6 @@
 <script src="js/settings.js"></script>    <!-- dark mode + home prefs -->
 <script src="js/savings.js"></script>     <!-- savings calculator -->
 <script src="js/budget.js"></script>      <!-- budget + expenses -->
-<script src="js/stocks.js"></script>      <!-- stocks + watchlist -->
 <script src="js/app.js"></script>         <!-- tabs + home + init -->
 
 </body>
