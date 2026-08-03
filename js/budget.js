@@ -203,14 +203,13 @@ function removeExpense(i) {
   renderAll();
 }
 
-function updateBudget() { saveSettings(); renderAll(); renderSplitPreview(); }
+function updateBudget() { saveSettings(); renderAll(); }
 
 function renderAll() {
   renderCategorySelector();
   renderBudgetCategories();
   renderBudgetOverviewCards();
   renderExpenses();
-  renderSplitPreview();
 }
 
 function renderCategorySelector() {
