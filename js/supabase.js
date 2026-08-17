@@ -83,25 +83,35 @@ async function loadFromSupabase() {
       sbFetch(`settings?user_db_id=eq.${uid}`),
       sbFetch(`user_preferences?user_db_id=eq.${uid}`)
     ]);
-    if (expRows.length > 0 || catRows.length > 0) {
-      expenses = expRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id }));
-      budgetCategories = catRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, color: r.color }));
-    }
+
+    // תמיד טען מ-Supabase — גם אם ריק
+    expenses = expRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id }));
+    budgetCategories = catRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, color: r.color }));
+
     if (settRows.length > 0) {
       applyInputValues(settRows[0]);
-      if (settRows[0].watchlist) watchlist = JSON.parse(settRows[0].watchlist || '[]');
+      if (settRows[0].watchlist) {
+        try { watchlist = JSON.parse(settRows[0].watchlist || '[]'); } catch(e) { watchlist = []; }
+      }
     }
     if (prefRows.length > 0) {
       const p = prefRows[0];
-      document.getElementById('showNavCards').checked = p.show_nav_cards !== false;
-      document.getElementById('showSummaryCards').checked = p.show_summary_cards !== false;
-      document.getElementById('showTip').checked = p.show_tip !== false;
+      const nc = document.getElementById('showNavCards');
+      const sc = document.getElementById('showSummaryCards');
+      const st = document.getElementById('showTip');
+      if (nc) nc.checked = p.show_nav_cards !== false;
+      if (sc) sc.checked = p.show_summary_cards !== false;
+      if (st) st.checked = p.show_tip !== false;
       applyHomePrefs({ showNavCards: p.show_nav_cards, showSummaryCards: p.show_summary_cards, showTip: p.show_tip });
     }
+
     saveLocal();
-    calcSavings(); renderAll(); renderWatchlist(); updateHome();
+    // טען חסכונות בנפרד
+    await loadSavingsFromDB();
+    renderAll(); renderWatchlist(); updateHome();
     showSync('מסונכרן ✅', true);
   } catch(e) {
+    console.error('Sync error:', e);
     showSync('מצב לא מקוון 📴', true);
   }
 }
@@ -117,15 +127,15 @@ async function saveSettings() {
         user_db_id: currentUser.id,
         id: `user_${currentUser.id}`,
         user_id: `user_${currentUser.id}`,
-        income: document.getElementById('income')?.value,
-        principal: document.getElementById('principal')?.value,
-        monthly: document.getElementById('monthly')?.value,
-        rate: document.getElementById('rate')?.value,
-        years: document.getElementById('years')?.value,
+        income: document.getElementById('income')?.value || '1200',
+        principal: document.getElementById('principal')?.value || '5000',
+        monthly: document.getElementById('monthly')?.value || '200',
+        rate: document.getElementById('rate')?.value || '4',
+        years: document.getElementById('years')?.value || '5',
         watchlist: JSON.stringify(watchlist)
       })
     });
-  } catch(e) {}
+  } catch(e) { console.error('saveSettings error:', e); }
 }
 
 function showSync(msg, fade = false) {
@@ -134,5 +144,10 @@ function showSync(msg, fade = false) {
   el.textContent = msg; el.style.opacity = '1';
   if (fade) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
+
+// סנכרון אוטומטי כל 30 שניות
+setInterval(() => {
+  if (currentUser) loadFromSupabase();
+}, 30000);
 
 function fmt(n) { return '₪' + Math.round(n).toLocaleString('he-IL'); }
