@@ -125,8 +125,7 @@ async function saveSettings() {
       headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({
         user_db_id: currentUser.id,
-        id: `user_${currentUser.id}`,
-        user_id: `user_${currentUser.id}`,
+        id: currentUser.id,
         income: document.getElementById('income')?.value || '1200',
         principal: document.getElementById('principal')?.value || '5000',
         monthly: document.getElementById('monthly')?.value || '200',
