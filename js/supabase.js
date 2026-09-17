@@ -134,9 +134,8 @@ async function saveSettings() {
         watchlist: JSON.stringify(watchlist)
       })
     });
-  } catch(e) { console.error('saveSettings error:', e); }
+  } catch (e) { console.error('saveSettings error:', e); }
 }
-
 function showSync(msg, fade = false) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
