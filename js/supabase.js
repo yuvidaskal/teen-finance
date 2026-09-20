@@ -1,8 +1,8 @@
 // ════════════════════════════════
 // STATE & CONSTANTS
 // ════════════════════════════════
-const SUPABASE_URL = 'https://onxwmsptviungelbqsco.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_vqBk62C4Jwop9jboO9Skyw_yibpz3ZV';
+const SUPABASE_URL = 'https://ovwteptpfnngnxggfmej.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_OpVXv2GFgokG8POyWlySkw_MZJsuCzK';
 const CAT_COLORS = ['#3dbdb5','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#8b5cf6','#14b8a6','#f97316','#6366f1'];
 
 let currentUser = null;
