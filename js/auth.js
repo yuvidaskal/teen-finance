@@ -67,7 +67,8 @@ async function doLogin() {
 function doLogout() {
   localStorage.removeItem('kc_session');
   currentUser = null;
-  expenses = []; budgetCategories = []; watchlist = [];
+  expenses = []; budgetCategories = []; watchlist = []; savings = [];
+  pendingWrites = [];
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('authOverlay').style.display = 'flex';
   closeSettings();
@@ -84,6 +85,7 @@ function enterApp() {
   loadLocalPrefs();
   updateRate(); updateYears();
   loadLocal();
+  loadPending();          // ← NEW: load pending queue before sync
   loadSavingsLocal();
   renderSavingsList();
   renderAll(); renderWatchlist(); updateHome();
