@@ -12,6 +12,10 @@ let watchlist = [];
 let selectedEmoji = '🍕';
 let selectedCatEmoji = '🍕';
 
+// ── SYNC STATE ──
+let isSyncing = false;
+let pendingWrites = [];   // [{ type, entityId, method, path, body, headers }]
+
 // ════════════════════════════════
 // SUPABASE HELPER
 // ════════════════════════════════
@@ -32,6 +36,93 @@ async function sbFetch(path, opts = {}) {
   }
   const ct = res.headers.get('content-type') || '';
   return ct.includes('json') ? res.json() : null;
+}
+
+// ════════════════════════════════
+// PENDING QUEUE (offline-friendly)
+// ════════════════════════════════
+function pendingKey() { return currentUser ? `kc_${currentUser.id}_pending` : null; }
+
+function loadPending() {
+  if (!currentUser) { pendingWrites = []; return; }
+  try {
+    const raw = localStorage.getItem(pendingKey());
+    pendingWrites = raw ? JSON.parse(raw) : [];
+  } catch(e) { pendingWrites = []; }
+  updateSyncBadge();
+}
+
+function savePending() {
+  const k = pendingKey();
+  if (!k) return;
+  try { localStorage.setItem(k, JSON.stringify(pendingWrites)); } catch(e) {}
+}
+
+function addPending(op) {
+  // Same entity+type => last write wins
+  pendingWrites = pendingWrites.filter(p => !(p.type === op.type && p.entityId === op.entityId));
+  pendingWrites.push(op);
+  savePending();
+  updateSyncBadge();
+}
+
+function removePending(type, entityId) {
+  const before = pendingWrites.length;
+  pendingWrites = pendingWrites.filter(p => !(p.type === type && p.entityId === entityId));
+  if (pendingWrites.length !== before) { savePending(); updateSyncBadge(); }
+}
+
+function hasPending(type, entityId) {
+  return pendingWrites.some(p => p.type === type && p.entityId === entityId);
+}
+
+function updateSyncBadge() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (pendingWrites.length > 0) {
+    el.textContent = `⏳ ${pendingWrites.length} שינויים ממתינים לסנכרון...`;
+    el.style.opacity = '1';
+  }
+}
+
+// ── Safe write: try DB, queue on failure ──
+async function safeWrite(op) {
+  try {
+    await sbFetch(op.path, {
+      method: op.method,
+      headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', ...(op.headers || {}) },
+      body: op.body !== undefined ? JSON.stringify(op.body) : undefined
+    });
+    removePending(op.type, op.entityId);
+    return true;
+  } catch (e) {
+    console.warn('⚠️ Write failed, queued for retry:', op.type, op.entityId, e.message);
+    addPending(op);
+    return false;
+  }
+}
+
+async function flushPending() {
+  if (!pendingWrites.length) return;
+  const queue = [...pendingWrites];
+  let ok = 0, fail = 0;
+  for (const op of queue) {
+    try {
+      await sbFetch(op.path, {
+        method: op.method,
+        headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', ...(op.headers || {}) },
+        body: op.body !== undefined ? JSON.stringify(op.body) : undefined
+      });
+      removePending(op.type, op.entityId);
+      ok++;
+    } catch (e) { fail++; }
+  }
+  if (ok > 0) console.log(`✅ Flushed ${ok} pending writes (${fail} failed)`);
+}
+
+// ── Generate unique ID ──
+function newId() {
+  return Date.now() + Math.floor(Math.random() * 1000);
 }
 
 // ════════════════════════════════
@@ -66,11 +157,44 @@ function loadLocal() {
 }
 
 function applyInputValues(s) {
-  if (s.income) document.getElementById('income').value = s.income;
-  if (s.principal) document.getElementById('principal').value = s.principal;
-  if (s.monthly) document.getElementById('monthly').value = s.monthly;
-  if (s.rate) { document.getElementById('rate').value = s.rate; updateRate(); }
-  if (s.years) { document.getElementById('years').value = s.years; updateYears(); }
+  const income = document.getElementById('income');
+  const principal = document.getElementById('principal');
+  const monthly = document.getElementById('monthly');
+  const rate = document.getElementById('rate');
+  const years = document.getElementById('years');
+  if (income && s.income) income.value = s.income;
+  if (principal && s.principal) principal.value = s.principal;
+  if (monthly && s.monthly) monthly.value = s.monthly;
+  if (rate && s.rate) { rate.value = s.rate; updateRate(); }
+  if (years && s.years) { years.value = s.years; updateYears(); }
+}
+
+// ════════════════════════════════
+// MERGE HELPERS
+// Local changes (pending) win over DB rows.
+// ════════════════════════════════
+function mergeExpenses(dbRows) {
+  const byId = new Map();
+  for (const e of expenses) byId.set(e.id, e);
+  for (const r of dbRows) {
+    if (hasPending('expense', r.id)) continue;
+    if (hasPending('expense_delete', r.id)) continue;
+    byId.set(r.id, { id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id });
+  }
+  for (const p of pendingWrites) if (p.type === 'expense_delete') byId.delete(p.entityId);
+  return Array.from(byId.values()).sort((a,b) => a.id - b.id);
+}
+
+function mergeBudgetCategories(dbRows) {
+  const byId = new Map();
+  for (const c of budgetCategories) byId.set(c.id, c);
+  for (const r of dbRows) {
+    if (hasPending('budget', r.id)) continue;
+    if (hasPending('budget_delete', r.id)) continue;
+    byId.set(r.id, { id: r.id, icon: r.icon, name: r.name, amount: r.amount, color: r.color });
+  }
+  for (const p of pendingWrites) if (p.type === 'budget_delete') byId.delete(p.entityId);
+  return Array.from(byId.values()).sort((a,b) => a.id - b.id);
 }
 
 // ════════════════════════════════
@@ -78,8 +202,12 @@ function applyInputValues(s) {
 // ════════════════════════════════
 async function loadFromSupabase() {
   if (!currentUser) return;
+  if (isSyncing) return;   // prevent overlapping runs
+  isSyncing = true;
   showSync('מסנכרן... ☁️');
   try {
+    await flushPending();   // retry queued writes first
+
     const uid = currentUser.id;
     const [expRows, catRows, settRows, prefRows] = await Promise.all([
       sbFetch(`expenses?user_db_id=eq.${uid}&order=created_at.asc`),
@@ -88,21 +216,16 @@ async function loadFromSupabase() {
       sbFetch(`user_preferences?user_db_id=eq.${uid}`)
     ]);
 
-    // עדכן state רק אם התשובה תקינה (Array.isArray)
-    if (Array.isArray(expRows)) {
-      expenses = expRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id }));
-    }
-    if (Array.isArray(catRows)) {
-      budgetCategories = catRows.map(r => ({ id: r.id, icon: r.icon, name: r.name, amount: r.amount, color: r.color }));
-    }
+    if (Array.isArray(expRows)) expenses = mergeExpenses(expRows);
+    if (Array.isArray(catRows)) budgetCategories = mergeBudgetCategories(catRows);
 
-    if (settRows.length > 0) {
+    if (settRows && settRows.length > 0 && !hasPending('settings', 'main')) {
       applyInputValues(settRows[0]);
       if (settRows[0].watchlist) {
         try { watchlist = JSON.parse(settRows[0].watchlist || '[]'); } catch(e) { watchlist = []; }
       }
     }
-    if (prefRows.length > 0) {
+    if (prefRows && prefRows.length > 0) {
       const p = prefRows[0];
       const nc = document.getElementById('showNavCards');
       const sc = document.getElementById('showSummaryCards');
@@ -114,49 +237,69 @@ async function loadFromSupabase() {
     }
 
     saveLocal();
-    // טען חסכונות בנפרד
     await loadSavingsFromDB();
     renderAll(); renderWatchlist(); updateHome();
-    showSync('מסונכרן ✅', true);
+
+    if (pendingWrites.length > 0) {
+      showSync(`⏳ ${pendingWrites.length} שינויים ממתינים`, true);
+    } else {
+      showSync('מסונכרן ✅', true);
+    }
   } catch(e) {
     console.error('❌ Sync error:', e);
-    loadLocal(); // fallback לנתונים מקומיים
-    renderAll(); updateHome();
-    showSync('מצב לא מקוון 📴', true);
+    loadLocal(); renderAll(); updateHome();
+    showSync('מצב לא מקוון 📴 — השינויים יסונכרנו בהמשך', true);
+  } finally {
+    isSyncing = false;
   }
 }
 
-async function saveSettings() {
+// ── Debounced saveSettings (prevents 2 requests per keystroke) ──
+let _saveSettingsTimer = null;
+function saveSettings() {
   saveLocal();
   if (!currentUser) return;
+  clearTimeout(_saveSettingsTimer);
+  _saveSettingsTimer = setTimeout(_doSaveSettings, 600);
+}
+
+async function _doSaveSettings() {
+  if (!currentUser) return;
+  const payload = {
+    user_db_id: currentUser.id,
+    income: document.getElementById('income')?.value || '1200',
+    principal: document.getElementById('principal')?.value || '5000',
+    monthly: document.getElementById('monthly')?.value || '200',
+    rate: document.getElementById('rate')?.value || '4',
+    years: document.getElementById('years')?.value || '5',
+    watchlist: JSON.stringify(watchlist)
+  };
   try {
-    // קודם בדוק אם קיימת רשומה למשתמש
-    const existing = await sbFetch(`settings?user_db_id=eq.${currentUser.id}`);
-    const payload = {
-      user_db_id: currentUser.id,
-      income: document.getElementById('income')?.value || '1200',
-      principal: document.getElementById('principal')?.value || '5000',
-      monthly: document.getElementById('monthly')?.value || '200',
-      rate: document.getElementById('rate')?.value || '4',
-      years: document.getElementById('years')?.value || '5',
-      watchlist: JSON.stringify(watchlist)
-    };
-    if (existing && existing.length > 0) {
-      // עדכן רשומה קיימת
-      await sbFetch(`settings?user_db_id=eq.${currentUser.id}`, {
-        method: 'PATCH',
-        headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // צור רשומה חדשה
-      await sbFetch('settings', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      });
+    // Upsert (requires UNIQUE on user_db_id in settings table)
+    await sbFetch('settings', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    removePending('settings', 'main');
+  } catch (e) {
+    // Fallback: read-then-write
+    try {
+      const existing = await sbFetch(`settings?user_db_id=eq.${currentUser.id}`);
+      if (existing && existing.length > 0) {
+        await sbFetch(`settings?user_db_id=eq.${currentUser.id}`, {
+          method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
+        });
+      } else {
+        await sbFetch('settings', {
+          method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
+        });
+      }
+      removePending('settings', 'main');
+    } catch (e2) {
+      addPending({ type: 'settings', entityId: 'main', method: 'POST', path: 'settings', body: payload });
     }
-  } catch(e) { console.error('saveSettings error:', e); }
+  }
 }
 
 function showSync(msg, fade = false) {
@@ -166,9 +309,14 @@ function showSync(msg, fade = false) {
   if (fade) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
 
-// סנכרון אוטומטי כל 30 שניות
+// Periodic sync (skips if one is already running)
 setInterval(() => {
-  if (currentUser) loadFromSupabase();
+  if (currentUser && !isSyncing) loadFromSupabase();
 }, 30000);
+
+// Retry when the browser comes back online
+window.addEventListener('online', () => {
+  if (currentUser) loadFromSupabase();
+});
 
 function fmt(n) { return '₪' + Math.round(n).toLocaleString('he-IL'); }
