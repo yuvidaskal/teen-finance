@@ -36,16 +36,31 @@ async function applyRecommendedSplit() {
   if (budgetCategories.length > 0) {
     if (!confirm('פעולה זו תחליף את התקציבים הקיימים. להמשיך?')) return;
     for (const cat of budgetCategories) {
-      await sbFetch(`budget_categories?id=eq.${cat.id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
+      await safeWrite({
+        type: 'budget_delete', entityId: cat.id,
+        method: 'DELETE', path: `budget_categories?id=eq.${cat.id}&user_db_id=eq.${currentUser?.id}`
+      });
     }
     budgetCategories = [];
     expenses.forEach(e => { e.catId = null; });
+    // Persist the cleared cat_id on existing expenses (was missing before)
+    for (const e of expenses) {
+      await safeWrite({
+        type: 'expense', entityId: e.id,
+        method: 'PATCH', path: `expenses?id=eq.${e.id}&user_db_id=eq.${currentUser?.id}`,
+        body: { cat_id: null }
+      });
+    }
   }
   for (const r of SPLIT_RULES) {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
+    const id = newId();
     const cat = { id, icon: r.icon, name: r.name, amount: Math.round(income * r.pct / 100), color: r.color };
     budgetCategories.push(cat);
-    await sbFetch('budget_categories', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
+    await safeWrite({
+      type: 'budget', entityId: id,
+      method: 'POST', path: 'budget_categories',
+      body: { id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id }
+    });
   }
   saveLocal();
   renderAll();
@@ -81,13 +96,11 @@ async function saveEditCat() {
   if (!cat) return;
   cat.name = name; cat.amount = amount;
   saveLocal();
-  try {
-    await sbFetch(`budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ name, amount })
-    });
-  } catch(e) {}
+  await safeWrite({
+    type: 'budget', entityId: id,
+    method: 'PATCH', path: `budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`,
+    body: { name, amount }
+  });
   closeEditCat();
   renderAll();
 }
@@ -96,6 +109,7 @@ async function saveEditCat() {
 // EXPORT TO EXCEL
 // ════════════════════════════════
 function exportToExcel() {
+  const income = parseFloat(document.getElementById('income')?.value) || 0;  // ← fix: was undefined
   if (expenses.length === 0 && budgetCategories.length === 0) {
     const syncEl = document.getElementById('syncStatus');
     if (syncEl && syncEl.textContent.includes('מסנכרן')) {
@@ -108,7 +122,6 @@ function exportToExcel() {
   const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
   const wb = XLSX.utils.book_new();
 
-  // ── Sheet 1: הוצאות ──
   const expHeaders = [['אייקון', 'שם הוצאה', 'תקציב', 'סכום (₪)']];
   const expRows = expenses.map(e => {
     const cat = budgetCategories.find(c => c.id === e.catId);
@@ -119,12 +132,9 @@ function exportToExcel() {
   expRows.push(['', '', 'נותר', income - totalExp]);
 
   const wsExp = XLSX.utils.aoa_to_sheet([...expHeaders, ...expRows]);
-
-  // עיצוב עמודות
   wsExp['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsExp, 'הוצאות');
 
-  // ── Sheet 2: תקציבים ──
   const catHeaders = [['אייקון', 'שם תקציב', 'תקציב (₪)', 'הוצאות (₪)', 'נותר (₪)', 'ניצול %']];
   const catRows = budgetCategories.map(c => {
     const spent = expenses.filter(e => e.catId === c.id).reduce((s, e) => s + e.amount, 0);
@@ -132,8 +142,6 @@ function exportToExcel() {
     const pct = c.amount > 0 ? Math.round((spent / c.amount) * 100) : 0;
     return [c.icon, c.name, c.amount, spent, rem, `${pct}%`];
   });
-
-  // חוצאות ללא תקציב
   const uncat = expenses.filter(e => !e.catId).reduce((s, e) => s + e.amount, 0);
   if (uncat > 0) catRows.push(['—', 'ללא תקציב', '—', uncat, '—', '—']);
 
@@ -141,7 +149,6 @@ function exportToExcel() {
   wsCat['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
   XLSX.utils.book_append_sheet(wb, wsCat, 'תקציבים');
 
-  // ── ייצוא ──
   const date = new Date().toLocaleDateString('he-IL').replace(/\//g, '-');
   XLSX.writeFile(wb, `כסף_חכם_${date}.xlsx`);
 }
@@ -164,12 +171,16 @@ function addBudgetCategory() {
   const income = parseFloat(document.getElementById('income').value) || 0;
   const used = budgetCategories.reduce((s, c) => s + c.amount, 0);
   if (used + amount > income) { alert('סכום התקציב עולה על ההכנסה!'); return; }
-  const cat = { id: Date.now(), icon: selectedCatEmoji, name, amount, color: CAT_COLORS[budgetCategories.length % CAT_COLORS.length] };
+  const cat = { id: newId(), icon: selectedCatEmoji, name, amount, color: CAT_COLORS[budgetCategories.length % CAT_COLORS.length] };
   budgetCategories.push(cat);
   document.getElementById('catName').value = '';
   document.getElementById('catAmount').value = '';
   saveLocal();
-  sbFetch('budget_categories', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
+  safeWrite({
+    type: 'budget', entityId: cat.id,
+    method: 'POST', path: 'budget_categories',
+    body: { id: cat.id, icon: cat.icon, name: cat.name, amount: cat.amount, color: cat.color, user_db_id: currentUser?.id }
+  });
   renderAll();
 }
 
@@ -177,7 +188,10 @@ function removeBudgetCategory(id) {
   budgetCategories = budgetCategories.filter(c => c.id !== id);
   expenses.forEach(e => { if (e.catId === id) e.catId = null; });
   saveLocal();
-  sbFetch(`budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
+  safeWrite({
+    type: 'budget_delete', entityId: id,
+    method: 'DELETE', path: `budget_categories?id=eq.${id}&user_db_id=eq.${currentUser?.id}`
+  });
   renderAll();
 }
 
@@ -186,12 +200,16 @@ function addExpense() {
   const amount = parseFloat(document.getElementById('expAmount').value);
   const catId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0) return;
-  const exp = { id: Date.now(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null };
+  const exp = { id: newId(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null };
   expenses.push(exp);
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
   saveLocal();
-  sbFetch('expenses', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ id: exp.id, icon: exp.icon, name: exp.name, amount: exp.amount, cat_id: exp.catId, user_db_id: currentUser?.id, user_id: `user_${currentUser?.id}` }) }).catch(() => {});
+  safeWrite({
+    type: 'expense', entityId: exp.id,
+    method: 'POST', path: 'expenses',
+    body: { id: exp.id, icon: exp.icon, name: exp.name, amount: exp.amount, cat_id: exp.catId, user_db_id: currentUser?.id }
+  });
   renderAll();
 }
 
@@ -199,7 +217,12 @@ function removeExpense(i) {
   const exp = expenses[i];
   expenses.splice(i, 1);
   saveLocal();
-  if (exp?.id) sbFetch(`expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`, { method: 'DELETE' }).catch(() => {});
+  if (exp?.id) {
+    safeWrite({
+      type: 'expense_delete', entityId: exp.id,
+      method: 'DELETE', path: `expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`
+    });
+  }
   renderAll();
 }
 
@@ -328,7 +351,6 @@ function openEditExp(index) {
   document.getElementById('editExpName').value = exp.name;
   document.getElementById('editExpAmount').value = exp.amount;
 
-  // מלא את רשימת התקציבים
   const sel = document.getElementById('editExpCategory');
   sel.innerHTML = '<option value="">— ללא תקציב —</option>';
   budgetCategories.forEach(c => {
@@ -339,7 +361,6 @@ function openEditExp(index) {
     sel.appendChild(opt);
   });
 
-  // סמן האייקון הנוכחי
   document.querySelectorAll('#editExpEmojiPicker .emoji-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.emoji === exp.icon);
   });
@@ -378,13 +399,11 @@ async function saveEditExp() {
   exp.catId = catId ? parseInt(catId) : null;
 
   saveLocal();
-  try {
-    await sbFetch(`expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ name: exp.name, amount: exp.amount, icon: exp.icon, cat_id: exp.catId })
-    });
-  } catch(e) {}
+  await safeWrite({
+    type: 'expense', entityId: exp.id,
+    method: 'PATCH', path: `expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`,
+    body: { name: exp.name, amount: exp.amount, icon: exp.icon, cat_id: exp.catId }
+  });
 
   closeEditExp();
   renderAll();
