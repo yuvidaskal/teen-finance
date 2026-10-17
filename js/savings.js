@@ -35,10 +35,9 @@ function addSaving() {
   if (!name) { alert('נא להזין שם לחיסכון'); return; }
   if (rate <= 0) { alert('נא להזין ריבית חיובית'); return; }
 
-  const saving = { id: Date.now(), name, principal, monthly, rate, years };
+  const saving = { id: newId(), name, principal, monthly, rate, years };
   savings.push(saving);
 
-  // Clear form
   document.getElementById('savingName').value = '';
   document.getElementById('savingPrincipal').value = '1000';
   document.getElementById('savingMonthly').value = '200';
@@ -160,42 +159,48 @@ function loadSavingsLocal() {
   } catch(e) {}
 }
 
+function mergeSavings(dbRows) {
+  const byId = new Map();
+  for (const s of savings) byId.set(s.id, s);
+  for (const r of dbRows) {
+    if (hasPending('saving', r.id)) continue;
+    if (hasPending('saving_delete', r.id)) continue;
+    byId.set(r.id, { id: r.id, name: r.name, principal: r.principal, monthly: r.monthly, rate: r.rate, years: r.years });
+  }
+  for (const p of pendingWrites) if (p.type === 'saving_delete') byId.delete(p.entityId);
+  return Array.from(byId.values()).sort((a,b) => a.id - b.id);
+}
+
 async function loadSavingsFromDB() {
   if (!currentUser) return;
   try {
     const rows = await sbFetch(`savings_plans?user_db_id=eq.${currentUser.id}&order=created_at.asc`);
-    if (rows && rows.length > 0) {
-      savings = rows.map(r => ({ id: r.id, name: r.name, principal: r.principal, monthly: r.monthly, rate: r.rate, years: r.years }));
+    if (Array.isArray(rows)) {
+      savings = mergeSavings(rows);
       saveSavingsLocal();
       renderSavingsList();
     }
   } catch(e) {}
 }
 
-async function saveSavingsToDB(saving) {
+function saveSavingsToDB(saving) {
   if (!currentUser) return;
-  try {
-    await sbFetch('savings_plans', {
-      method: 'POST',
-      headers: { 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ id: saving.id, name: saving.name, principal: saving.principal, monthly: saving.monthly, rate: saving.rate, years: saving.years, user_db_id: currentUser.id, user_id: `user_${currentUser.id}` })
-    });
-  } catch(e) {}
+  safeWrite({
+    type: 'saving', entityId: saving.id,
+    method: 'POST', path: 'savings_plans',
+    body: { id: saving.id, name: saving.name, principal: saving.principal, monthly: saving.monthly, rate: saving.rate, years: saving.years, user_db_id: currentUser.id }
+  });
 }
 
-async function deleteSavingFromDB(id) {
+function deleteSavingFromDB(id) {
   if (!currentUser) return;
-  try {
-    await sbFetch(`savings_plans?id=eq.${id}&user_db_id=eq.${currentUser.id}`, { method: 'DELETE' });
-  } catch(e) {}
+  safeWrite({
+    type: 'saving_delete', entityId: id,
+    method: 'DELETE', path: `savings_plans?id=eq.${id}&user_db_id=eq.${currentUser.id}`
+  });
 }
 
 // ── BACKWARDS COMPAT for home panel ──
-function calcSavings() {
-  // used by updateHome to get total savings for display
-  // no-op now — home reads from savings array
-}
-
-// Keep old slider functions in case called from elsewhere
+function calcSavings() {}
 function updateRate() {}
 function updateYears() {}
