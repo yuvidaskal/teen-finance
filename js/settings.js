@@ -26,11 +26,12 @@ function saveHomePrefs() {
   localStorage.setItem('kc_homeprefs', JSON.stringify(prefs));
   applyHomePrefs(prefs);
   if (currentUser) {
-    sbFetch('user_preferences', {
-      method: 'POST',
+    safeWrite({
+      type: 'prefs', entityId: 'main',
+      method: 'POST', path: 'user_preferences',
       headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ user_db_id: currentUser.id, ...prefs })
-    }).catch(() => {});
+      body: { user_db_id: currentUser.id, ...prefs }
+    });
   }
 }
 
@@ -41,11 +42,9 @@ function applyHomePrefs(prefs) {
 }
 
 function loadLocalPrefs() {
-  // Dark mode
   const dark = localStorage.getItem('kc_dark') === '1';
   document.getElementById('darkModeToggle').checked = dark;
   document.body.classList.toggle('dark', dark);
-  // Home prefs
   try {
     const raw = localStorage.getItem('kc_homeprefs');
     if (raw) {
