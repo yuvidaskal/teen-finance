@@ -14,9 +14,6 @@
 </head>
 <body>
 
-<!-- ════════════════════════════════
-     AUTH OVERLAY
-════════════════════════════════ -->
 <div id="authOverlay">
   <div class="auth-box">
     <div class="auth-logo">
@@ -31,97 +28,49 @@
     <div id="authError" class="auth-error"></div>
     <div id="authSuccess" class="auth-success"></div>
     <div id="loginForm">
-      <div class="form-group">
-        <label>שם משתמש</label>
-        <input type="text" id="loginUsername" placeholder="הכנס שם משתמש" autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label>סיסמא</label>
-        <input type="password" id="loginPassword" placeholder="הכנס סיסמא" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUsername" placeholder="הכנס שם משתמש" autocomplete="username"></div>
+      <div class="form-group"><label>סיסמא</label><input type="password" id="loginPassword" placeholder="הכנס סיסמא" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn btn-primary btn-full" onclick="doLogin()" style="margin-top:.4rem;">כניסה ←</button>
     </div>
     <div id="registerForm" style="display:none;">
-      <div class="form-group">
-        <label>שם משתמש</label>
-        <input type="text" id="regUsername" placeholder="בחר שם משתמש">
-      </div>
-      <div class="form-group">
-        <label>סיסמא</label>
-        <input type="password" id="regPassword" placeholder="בחר סיסמא (לפחות 4 תווים)">
-      </div>
-      <div class="form-group">
-        <label>אימות סיסמא</label>
-        <input type="password" id="regPassword2" placeholder="הכנס שוב את הסיסמא" onkeydown="if(event.key==='Enter')doRegister()">
-      </div>
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="regUsername" placeholder="בחר שם משתמש"></div>
+      <div class="form-group"><label>סיסמא</label><input type="password" id="regPassword" placeholder="בחר סיסמא (לפחות 4 תווים)"></div>
+      <div class="form-group"><label>אימות סיסמא</label><input type="password" id="regPassword2" placeholder="הכנס שוב את הסיסמא" onkeydown="if(event.key==='Enter')doRegister()"></div>
       <button class="btn btn-primary btn-full" onclick="doRegister()" style="margin-top:.4rem;">הירשם ←</button>
     </div>
   </div>
 </div>
 
-<!-- ════════════════════════════════
-     SETTINGS SHEET
-════════════════════════════════ -->
 <div id="settingsOverlay" onclick="closeSettings(event)">
   <div class="settings-sheet" onclick="event.stopPropagation()">
     <div class="sheet-handle"></div>
-    <div class="settings-title">
-      <span>⚙️ הגדרות</span>
-      <button onclick="closeSettings()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
-    </div>
+    <div class="settings-title"><span>⚙️ הגדרות</span><button onclick="closeSettings()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button></div>
     <div class="settings-section">
       <div class="settings-section-label">מראה</div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">🌙 מצב מוחשך</div>
-          <div class="toggle-sub">מתאים לשימוש בחושך</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div><div class="toggle-label">🌙 מצב מוחשך</div><div class="toggle-sub">מתאים לשימוש בחושך</div></div>
+        <label class="toggle"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()"><span class="toggle-slider"></span></label>
       </div>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">רכיבי דף הבית</div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">📊 כרטיסי ניווט מהיר</div>
-          <div class="toggle-sub">תקציב / חיסכון / מניות</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="showNavCards" checked onchange="saveHomePrefs()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div><div class="toggle-label">📊 כרטיסי ניווט מהיר</div><div class="toggle-sub">תקציב / חיסכון / מניות</div></div>
+        <label class="toggle"><input type="checkbox" id="showNavCards" checked onchange="saveHomePrefs()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">💰 כרטיסי סיכום</div>
-          <div class="toggle-sub">יתרה + חיסכון צפוי</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="showSummaryCards" checked onchange="saveHomePrefs()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div><div class="toggle-label">💰 כרטיסי סיכום</div><div class="toggle-sub">יתרה + חיסכון צפוי</div></div>
+        <label class="toggle"><input type="checkbox" id="showSummaryCards" checked onchange="saveHomePrefs()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">⚡ טיפ היום</div>
-          <div class="toggle-sub">טיפ פיננסי יומי</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="showTip" checked onchange="saveHomePrefs()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div><div class="toggle-label">⚡ טיפ היום</div><div class="toggle-sub">טיפ פיננסי יומי</div></div>
+        <label class="toggle"><input type="checkbox" id="showTip" checked onchange="saveHomePrefs()"><span class="toggle-slider"></span></label>
       </div>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">חשבון</div>
       <div class="toggle-row" style="border:none;">
-        <div>
-          <div class="toggle-label" id="settingsUsername">משתמש</div>
-          <div class="toggle-sub">מחובר לחשבונך</div>
-        </div>
+        <div><div class="toggle-label" id="settingsUsername">משתמש</div><div class="toggle-sub">מחובר לחשבונך</div></div>
         <button class="btn btn-danger" onclick="doLogout()">התנתק</button>
       </div>
     </div>
@@ -129,25 +78,11 @@
   </div>
 </div>
 
-<!-- ════════════════════════════════
-     MAIN APP
-════════════════════════════════ -->
 <div class="container" id="appContainer" style="display:none;">
-
   <header>
-    <div class="header-actions">
-      <button class="icon-btn" onclick="openSettings()" title="הגדרות">⚙️</button>
-    </div>
-    <div style="position:absolute;right:0;top:1.5rem;">
-      <div class="user-chip" onclick="openSettings()">
-        <span>👤</span>
-        <span id="headerUsername"></span>
-      </div>
-    </div>
-    <div class="logo-wrap">
-      <img class="logo-img" src="icon.png" alt="" onerror="this.style.display='none'">
-      <span class="logo-text">כסף חכם</span>
-    </div>
+    <div class="header-actions"><button class="icon-btn" onclick="openSettings()" title="הגדרות">⚙️</button></div>
+    <div style="position:absolute;right:0;top:1.5rem;"><div class="user-chip" onclick="openSettings()"><span>👤</span><span id="headerUsername"></span></div></div>
+    <div class="logo-wrap"><img class="logo-img" src="icon.png" alt="" onerror="this.style.display='none'"><span class="logo-text">כסף חכם</span></div>
     <div class="tagline">ניהול כלכלי לבני נוער</div>
     <div id="syncStatus"></div>
   </header>
@@ -185,25 +120,26 @@
         <button class="btn btn-outline" onclick="switchTab('savings')">עדכון חיסכון ←</button>
       </div>
     </div>
+    <div class="card" id="homeChartCard" style="margin-bottom:1rem;">
+      <div class="card-title">📈 הוצאות מצטברות החודש</div>
+      <div style="position:relative;height:220px;">
+        <canvas id="expensesChart"></canvas>
+      </div>
+      <div style="font-size:.68rem;color:var(--muted);text-align:center;margin-top:.5rem;">
+        הקו הרציף: הוצאות בפועל · הקו המקווקו: תחזית להמשך החודש
+      </div>
+    </div>
     <div id="homeTipCard" class="tip-of-day">
       <div style="font-size:1.3rem;flex-shrink:0;">⚡</div>
-      <div>
-        <div class="tod-label">טיפ היום</div>
-        <div class="tod-text" id="dailyTip"></div>
-      </div>
+      <div><div class="tod-label">טיפ היום</div><div class="tod-text" id="dailyTip"></div></div>
     </div>
   </div>
 
   <!-- SAVINGS -->
   <div id="savings" class="panel">
-
-    <!-- Add new saving -->
     <div class="card">
       <div class="card-title">➕ הוסף חיסכון חדש</div>
-      <div class="form-group">
-        <label>שם החיסכון</label>
-        <input type="text" id="savingName" placeholder="לדוגמה: חיסכון לאייפון...">
-      </div>
+      <div class="form-group"><label>שם החיסכון</label><input type="text" id="savingName" placeholder="לדוגמה: חיסכון לאייפון..."></div>
       <div class="grid2">
         <div class="form-group"><label>סכום התחלתי (₪)</label><input type="number" id="savingPrincipal" value="1000" min="0"></div>
         <div class="form-group"><label>הפקדה חודשית (₪)</label><input type="number" id="savingMonthly" value="200" min="0"></div>
@@ -214,11 +150,7 @@
       </div>
       <button class="btn btn-primary btn-full" onclick="addSaving()">+ הוסף חיסכון</button>
     </div>
-
-    <!-- Savings list -->
     <div id="savingsList"></div>
-
-    <!-- Detail modal -->
     <div id="savingDetailOverlay" onclick="closeSavingDetail(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:flex-end;justify-content:center;">
       <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:820px;padding:1.5rem 1.5rem 2.5rem;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease;">
         <div style="width:40px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 1rem;"></div>
@@ -229,12 +161,10 @@
         <div id="detailContent"></div>
       </div>
     </div>
-
   </div>
 
   <!-- BUDGET -->
   <div id="budget" class="panel">
-
     <!-- Edit expense modal -->
     <div id="editExpOverlay" onclick="closeEditExp(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
       <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
@@ -251,6 +181,7 @@
         </div>
         <div class="form-group"><label>שם הוצאה</label><input type="text" id="editExpName" placeholder="שם הוצאה..."></div>
         <div class="form-group"><label>סכום (₪)</label><input type="number" id="editExpAmount" placeholder="סכום ₪" min="0"></div>
+        <div class="form-group"><label>תאריך</label><input type="date" id="editExpDate"></div>
         <div class="form-group"><label>תקציב</label><select id="editExpCategory"><option value="">— ללא תקציב —</option></select></div>
         <input type="hidden" id="editExpIndex">
         <div style="display:flex;gap:.5rem;margin-top:.5rem;">
@@ -277,10 +208,7 @@
     <div class="card">
       <div class="card-title">💰 הכנסה חודשית</div>
       <div class="form-group"><label>הכנסה חודשית כוללת (₪)</label><input type="number" id="income" value="1200" min="0" oninput="updateBudget()"></div>
-      <div class="unalloc-box">
-        <span style="font-size:.76rem;font-weight:700;color:var(--text2);">לא מחולק לתקציבים</span>
-        <span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span>
-      </div>
+      <div class="unalloc-box"><span style="font-size:.76rem;font-weight:700;color:var(--text2);">לא מחולק לתקציבים</span><span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span></div>
     </div>
 
     <div class="card">
@@ -324,6 +252,7 @@
         <input type="text" id="expName" placeholder="שם הוצאה..." style="flex:2">
         <input type="number" id="expAmount" placeholder="סכום ₪" min="0">
       </div>
+      <div class="form-group" style="margin-top:.6rem;"><label>תאריך ההוצאה</label><input type="date" id="expDate"></div>
       <div class="form-group" style="margin-top:.5rem;"><label>שייך לתקציב</label><select id="expCategory"><option value="">— ללא תקציב —</option></select></div>
       <button class="btn btn-primary btn-full" onclick="addExpense()" style="margin-top:.5rem;">+ הוסף הוצאה</button>
     </div>
@@ -331,9 +260,7 @@
       <div class="card-title">📋 כל ההוצאות</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
         <span style="font-size:.78rem;color:var(--text2);">כל ההוצאות החודש</span>
-        <button class="btn btn-outline" onclick="exportToExcel()" style="font-size:.75rem;padding:.4rem .9rem;">
-          📥 ייצא לאקסל
-        </button>
+        <button class="btn btn-outline" onclick="exportToExcel()" style="font-size:.75rem;padding:.4rem .9rem;">📥 ייצא לאקסל</button>
       </div>
       <div class="income-box">
         <div><div class="income-label">הכנסה</div><div class="income-val" id="incomeDisplay">₪1,200</div></div>
@@ -358,14 +285,10 @@
       <div style="font-size:1.1rem;font-weight:900;">שלם לעצמך ראשון 💜</div>
       <div style="font-size:.78rem;opacity:.85;margin-top:.3rem;line-height:1.5;">בכל פעם שמגיע לך כסף — העבר 20% לחיסכון לפני שאתה מוציא משהו.</div>
     </div>
-
-    <!-- Tips category tabs -->
     <div style="display:flex;gap:.4rem;margin-bottom:1rem;">
       <button class="btn btn-primary" id="tipTabGeneral" onclick="switchTipTab('general')" style="flex:1;font-size:.78rem;padding:.5rem;">💡 כללי</button>
       <button class="btn btn-outline" id="tipTabInvest" onclick="switchTipTab('invest')" style="flex:1;font-size:.78rem;padding:.5rem;">📈 השקעות</button>
     </div>
-
-    <!-- General tips -->
     <div id="tipSectionGeneral">
       <div class="tip-card"><div class="tip-icon">⚡</div><div><div class="tip-badge">ריבית דריבית</div><div class="tip-title">₪100 היום שווים הרבה יותר מחר</div><div class="tip-text">₪5,000 שמניחים בגיל 16 עם 5% ריבית יהפכו ל-₪21,600 עד גיל 46.</div></div></div>
       <div class="tip-card"><div class="tip-icon">🧠</div><div><div class="tip-badge">פסיכולוגיה</div><div class="tip-title">כלל 24 שעות לקניות אימפולסיביות</div><div class="tip-text">לפני כל קנייה של יותר מ-₪100 — המתן יום שלם. 80% מהפעמים תגלה שלא באמת צריך.</div></div></div>
@@ -373,49 +296,37 @@
       <div class="tip-card"><div class="tip-icon">🎯</div><div><div class="tip-badge">יעדים</div><div class="tip-title">יעדים ספציפיים עובדים יותר טוב</div><div class="tip-text">"חוסך ₪3,500 לאייפון בתוך 8 חודשים" עדיף על "אני רוצה לחסוך".</div></div></div>
       <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אוטומציה</div><div class="tip-title">הגדר העברה אוטומטית</div><div class="tip-text">בקש מהורים לעזור להגדיר העברה אוטומטית לחיסכון ביום שמגיע הכסף.</div></div></div>
       <div class="tip-card"><div class="tip-icon">🛒</div><div><div class="tip-badge">קנייה חכמה</div><div class="tip-title">השווה מחירים תמיד</div><div class="tip-text">לפני כל קנייה — בדוק את המחיר באמזון ו-Zap. 5 דקות יכולות לחסוך עשרות שקלים.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">📊</div><div><div class="tip-badge">הרגל חשוב</div><div class="tip-title">ייצא לאקסל + נתח עם NotebookLM</div><div class="tip-text">בסוף כל חודש לחץ "ייצא לאקסל" ושמור את הקובץ. אחר כך העלה אותו ל-<strong>NotebookLM</strong> של גוגל (notebook.google.com) — הוא יוכל לנתח את ההוצאות שלך, להכין לך סיכומים, גרפים ואפילו מצגת — בלי שתצטרך לעשות כלום בעצמך.</div></div></div>
     </div>
-
-    <!-- Investment tips -->
     <div id="tipSectionInvest" style="display:none;">
-
-      <!-- Intro card -->
       <div class="card" style="background:linear-gradient(135deg,#1a3a5c,#1e4d7a);color:white;border:none;box-shadow:0 6px 18px rgba(30,77,122,.35);margin-bottom:1rem;">
         <div style="font-size:.66rem;font-weight:800;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;">למה להשקיע?</div>
         <div style="font-size:1.05rem;font-weight:900;">הכסף שלך יכול לעבוד בשבילך 💼</div>
         <div style="font-size:.78rem;opacity:.85;margin-top:.3rem;line-height:1.5;">חיסכון בבנק נותן ~3% בשנה. השקעה במדד S&P 500 נתנה בממוצע ~10% בשנה היסטורית. ההבדל לאורך שנים הוא עצום.</div>
       </div>
-
       <div class="tip-card"><div class="tip-icon">📊</div><div><div class="tip-badge">מושגי יסוד</div><div class="tip-title">מה זה מדד?</div><div class="tip-text">מדד הוא סל של מניות רבות יחד. S&P 500 למשל מכיל את 500 החברות הגדולות בארה"ב — אפל, גוגל, מיקרוסופט ועוד. במקום לבחור מניה אחת ולסכן הכל, אתה פורס את הכסף על מאות חברות.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">🏦</div><div><div class="tip-badge">איפה משקיעים?</div><div class="tip-title">ברוקרים בישראל</div><div class="tip-text">כדי להשקיע צריך חשבון ברוקר. ברוקרים פופולריים בישראל: מיטב, אקסלנס, IBI, פסגות. עד גיל 18 צריך הורה שיפתח את החשבון בשמך — זה פשוט יותר ממה שנשמע.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">🔄</div><div><div class="tip-badge">אסטרטגיה</div><div class="tip-title">DCA — השקעה חודשית קבועה</div><div class="tip-text">במקום לנסות "לתזמן את השוק" — השקע סכום קבוע כל חודש, בין אם השוק עולה ובין אם יורד. זו האסטרטגיה שמומלצת על ידי רוב מומחי ההשקעות לטווח ארוך.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">⚠️</div><div><div class="tip-badge">חשוב לדעת</div><div class="tip-title">השקעה היא לטווח ארוך</div><div class="tip-text">השוק יכול לרדת בטווח הקצר — זה נורמלי לחלוטין. מי שהשקיע ב-S&P 500 לפני משבר 2008 והמשיך — הכפיל את כספו עד 2013. הסבלנות היא הנשק הגדול ביותר של המשקיע.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">🇮🇱</div><div><div class="tip-badge">שוק מקומי</div><div class="tip-title">מדד ת"א 125</div><div class="tip-text">בדיוק כמו S&P 500 אבל לישראל — מכיל את 125 החברות הגדולות בבורסה בתל אביב. פחות מגוון מהמדד האמריקאי, אבל ללא חשיפה לסיכון מטבע.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">💡</div><div><div class="tip-badge">טיפ מעשי</div><div class="tip-title">ETF — הדרך הפשוטה להשקיע במדד</div><div class="tip-text">ETF (קרן סל) היא מוצר שעוקב אחרי מדד ונסחר כמו מניה. לדוגמה: SPY עוקב אחרי S&P 500. אפשר לקנות אחד ממש כמו שקונים מניה של חברה — פשוט, זול ויעיל.</div></div></div>
-
       <div class="tip-card"><div class="tip-icon">🧮</div><div><div class="tip-badge">דוגמה מחשבונית</div><div class="tip-title">₪500 בחודש — מה ההבדל?</div><div class="tip-text">₪500/חודש למשך 10 שנים: בבנק (3%) = ₪70,000. בקרן מדד (8%) = ₪91,000. בS&P 500 היסטורית (10%) = ₪102,000. ההבדל בין בנק למדד: ₪32,000 — בלי לעשות כלום נוסף.</div></div></div>
-
     </div>
   </div>
+</div>
 
-</div><!-- /container -->
-
-<!-- ════ LIBRARIES ════ -->
+<!-- LIBRARIES -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- ════ JS FILES — סדר הטעינה חשוב! ════ -->
-<script src="js/supabase.js"></script>   <!-- state + DB helpers + fmt() -->
-<script src="js/auth.js"></script>        <!-- login / register / logout -->
-<script src="js/settings.js"></script>    <!-- dark mode + home prefs -->
-<script src="js/savings.js"></script>     <!-- savings calculator -->
-<script src="js/budget.js"></script>      <!-- budget + expenses -->
-<script src="js/app.js"></script>         <!-- tabs + home + init -->
+<!-- JS FILES -->
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/savings.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>
