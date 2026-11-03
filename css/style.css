@@ -189,3 +189,34 @@ input[type="range"]{width:100%;padding:0;height:5px;border-radius:99px;border:no
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══ DATE INPUT — match other inputs ══ */
+input[type="date"]{
+  width:100%;
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  font-family:'Heebo',sans-serif;
+  font-size:.9rem;
+  padding:.6rem .9rem;
+  transition:all .2s;
+  outline:none;
+  min-height:2.6rem;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+}
+input[type="date"]:focus{
+  border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(61,189,181,.12);
+  background:var(--card);
+}
+input[type="date"]::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  opacity:0.6;
+  transition:opacity .2s;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover{
+  opacity:1;
+}
