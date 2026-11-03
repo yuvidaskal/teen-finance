@@ -7,6 +7,21 @@ const SPLIT_RULES = [
   { name: 'חיסכון', icon: '🏦', pct: 20, color: '#10b981', desc: 'חיסכון והשקעה לעתיד' },
 ];
 
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [, m, d] = dateStr.split('-');
+      return `${d}/${m}`;
+    }
+    const dt = new Date(dateStr);
+    if (isNaN(dt.getTime())) return '';
+    const d = String(dt.getDate()).padStart(2, '0');
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    return `${d}/${m}`;
+  } catch(e) { return ''; }
+}
+
 function renderSplitPreview() {
   const income = parseFloat(document.getElementById('income').value) || 0;
   const wrap = document.getElementById('splitPreview');
@@ -43,7 +58,6 @@ async function applyRecommendedSplit() {
     }
     budgetCategories = [];
     expenses.forEach(e => { e.catId = null; });
-    // Persist the cleared cat_id on existing expenses (was missing before)
     for (const e of expenses) {
       await safeWrite({
         type: 'expense', entityId: e.id,
@@ -109,7 +123,7 @@ async function saveEditCat() {
 // EXPORT TO EXCEL
 // ════════════════════════════════
 function exportToExcel() {
-  const income = parseFloat(document.getElementById('income')?.value) || 0;  // ← fix: was undefined
+  const income = parseFloat(document.getElementById('income')?.value) || 0;
   if (expenses.length === 0 && budgetCategories.length === 0) {
     const syncEl = document.getElementById('syncStatus');
     if (syncEl && syncEl.textContent.includes('מסנכרן')) {
@@ -122,17 +136,17 @@ function exportToExcel() {
   const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
   const wb = XLSX.utils.book_new();
 
-  const expHeaders = [['אייקון', 'שם הוצאה', 'תקציב', 'סכום (₪)']];
+  const expHeaders = [['אייקון', 'שם הוצאה', 'תאריך', 'תקציב', 'סכום (₪)']];
   const expRows = expenses.map(e => {
     const cat = budgetCategories.find(c => c.id === e.catId);
-    return [e.icon, e.name, cat ? `${cat.icon} ${cat.name}` : 'ללא תקציב', e.amount];
+    return [e.icon, e.name, e.date ? formatDateShort(e.date) : '', cat ? `${cat.icon} ${cat.name}` : 'ללא תקציב', e.amount];
   });
-  expRows.push(['', '', 'סה״כ הוצאות', totalExp]);
-  expRows.push(['', '', 'הכנסה', income]);
-  expRows.push(['', '', 'נותר', income - totalExp]);
+  expRows.push(['', '', '', 'סה״כ הוצאות', totalExp]);
+  expRows.push(['', '', '', 'הכנסה', income]);
+  expRows.push(['', '', '', 'נותר', income - totalExp]);
 
   const wsExp = XLSX.utils.aoa_to_sheet([...expHeaders, ...expRows]);
-  wsExp['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 12 }];
+  wsExp['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 10 }, { wch: 18 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsExp, 'הוצאות');
 
   const catHeaders = [['אייקון', 'שם תקציב', 'תקציב (₪)', 'הוצאות (₪)', 'נותר (₪)', 'ניצול %']];
@@ -199,16 +213,23 @@ function addExpense() {
   const name = document.getElementById('expName').value.trim();
   const amount = parseFloat(document.getElementById('expAmount').value);
   const catId = document.getElementById('expCategory').value;
+  const dateInput = document.getElementById('expDate');
+  const expenseDate = dateInput?.value || new Date().toISOString().split('T')[0];
   if (!name || !amount || amount <= 0) return;
-  const exp = { id: newId(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null };
+  const exp = { id: newId(), icon: selectedEmoji, name, amount, catId: catId ? parseInt(catId) : null, date: expenseDate };
   expenses.push(exp);
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
+  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
   saveLocal();
   safeWrite({
     type: 'expense', entityId: exp.id,
     method: 'POST', path: 'expenses',
-    body: { id: exp.id, icon: exp.icon, name: exp.name, amount: exp.amount, cat_id: exp.catId, user_db_id: currentUser?.id }
+    body: {
+      id: exp.id, icon: exp.icon, name: exp.name, amount: exp.amount,
+      cat_id: exp.catId, user_db_id: currentUser?.id,
+      created_at: dateToCreatedAt(exp.date)
+    }
   });
   renderAll();
 }
@@ -233,6 +254,7 @@ function renderAll() {
   renderBudgetCategories();
   renderBudgetOverviewCards();
   renderExpenses();
+  if (typeof renderExpensesChart === 'function') renderExpensesChart();
 }
 
 function renderCategorySelector() {
@@ -329,7 +351,10 @@ function renderExpenses() {
         <span class="exp-icon">${e.icon}</span>
         <div>
           <div class="exp-name">${e.name}</div>
-          ${cat ? `<div style="font-size:.62rem;color:${cat.color};font-weight:700;">${cat.icon} ${cat.name}</div>` : '<div style="font-size:.62rem;color:var(--muted);">ללא תקציב</div>'}
+          <div style="display:flex;gap:.4rem;align-items:center;margin-top:2px;">
+            ${cat ? `<span style="font-size:.62rem;color:${cat.color};font-weight:700;">${cat.icon} ${cat.name}</span>` : '<span style="font-size:.62rem;color:var(--muted);">ללא תקציב</span>'}
+            ${e.date ? `<span style="font-size:.62rem;color:var(--muted);">📅 ${formatDateShort(e.date)}</span>` : ''}
+          </div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:.4rem;">
@@ -350,6 +375,8 @@ function openEditExp(index) {
   document.getElementById('editExpIndex').value = index;
   document.getElementById('editExpName').value = exp.name;
   document.getElementById('editExpAmount').value = exp.amount;
+  const dateEl = document.getElementById('editExpDate');
+  if (dateEl) dateEl.value = exp.date || new Date().toISOString().split('T')[0];
 
   const sel = document.getElementById('editExpCategory');
   sel.innerHTML = '<option value="">— ללא תקציב —</option>';
@@ -397,12 +424,18 @@ async function saveEditExp() {
   exp.amount = amount;
   exp.icon = selectedEditExpEmoji;
   exp.catId = catId ? parseInt(catId) : null;
+  const dateEl = document.getElementById('editExpDate');
+  exp.date = dateEl?.value || exp.date || new Date().toISOString().split('T')[0];
 
   saveLocal();
   await safeWrite({
     type: 'expense', entityId: exp.id,
     method: 'PATCH', path: `expenses?id=eq.${exp.id}&user_db_id=eq.${currentUser?.id}`,
-    body: { name: exp.name, amount: exp.amount, icon: exp.icon, cat_id: exp.catId }
+    body: {
+      name: exp.name, amount: exp.amount, icon: exp.icon,
+      cat_id: exp.catId,
+      created_at: dateToCreatedAt(exp.date)
+    }
   });
 
   closeEditExp();
