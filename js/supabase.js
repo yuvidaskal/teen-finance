@@ -12,9 +12,14 @@ let watchlist = [];
 let selectedEmoji = '🍕';
 let selectedCatEmoji = '🍕';
 
+const sb = (typeof supabase !== 'undefined')
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
 // ── SYNC STATE ──
 let isSyncing = false;
-let pendingWrites = [];   // [{ type, entityId, method, path, body, headers }]
+let pendingWrites = [];
+let realtimeChannel = null;
 
 // ════════════════════════════════
 // SUPABASE HELPER
@@ -39,7 +44,28 @@ async function sbFetch(path, opts = {}) {
 }
 
 // ════════════════════════════════
-// PENDING QUEUE (offline-friendly)
+// DATE HELPERS
+// ════════════════════════════════
+function extractDateFromCreatedAt(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch(e) { return ''; }
+}
+
+function dateToCreatedAt(dateStr) {
+  if (!dateStr) return new Date().toISOString();
+  // Set to noon UTC to avoid timezone day-shifts
+  return `${dateStr}T12:00:00.000Z`;
+}
+
+// ════════════════════════════════
+// PENDING QUEUE
 // ════════════════════════════════
 function pendingKey() { return currentUser ? `kc_${currentUser.id}_pending` : null; }
 
@@ -59,7 +85,6 @@ function savePending() {
 }
 
 function addPending(op) {
-  // Same entity+type => last write wins
   pendingWrites = pendingWrites.filter(p => !(p.type === op.type && p.entityId === op.entityId));
   pendingWrites.push(op);
   savePending();
@@ -85,7 +110,6 @@ function updateSyncBadge() {
   }
 }
 
-// ── Safe write: try DB, queue on failure ──
 async function safeWrite(op) {
   try {
     await sbFetch(op.path, {
@@ -96,7 +120,7 @@ async function safeWrite(op) {
     removePending(op.type, op.entityId);
     return true;
   } catch (e) {
-    console.warn('⚠️ Write failed, queued for retry:', op.type, op.entityId, e.message);
+    console.warn('⚠️ Write failed, queued:', op.type, op.entityId, e.message);
     addPending(op);
     return false;
   }
@@ -120,7 +144,6 @@ async function flushPending() {
   if (ok > 0) console.log(`✅ Flushed ${ok} pending writes (${fail} failed)`);
 }
 
-// ── Generate unique ID ──
 function newId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
@@ -171,7 +194,6 @@ function applyInputValues(s) {
 
 // ════════════════════════════════
 // MERGE HELPERS
-// Local changes (pending) win over DB rows.
 // ════════════════════════════════
 function mergeExpenses(dbRows) {
   const byId = new Map();
@@ -179,7 +201,11 @@ function mergeExpenses(dbRows) {
   for (const r of dbRows) {
     if (hasPending('expense', r.id)) continue;
     if (hasPending('expense_delete', r.id)) continue;
-    byId.set(r.id, { id: r.id, icon: r.icon, name: r.name, amount: r.amount, catId: r.cat_id });
+    byId.set(r.id, {
+      id: r.id, icon: r.icon, name: r.name, amount: r.amount,
+      catId: r.cat_id,
+      date: extractDateFromCreatedAt(r.created_at)
+    });
   }
   for (const p of pendingWrites) if (p.type === 'expense_delete') byId.delete(p.entityId);
   return Array.from(byId.values()).sort((a,b) => a.id - b.id);
@@ -198,16 +224,56 @@ function mergeBudgetCategories(dbRows) {
 }
 
 // ════════════════════════════════
+// REALTIME
+// ════════════════════════════════
+function initRealtime() {
+  if (!sb || !currentUser) return;
+  if (realtimeChannel && realtimeChannel._userId === currentUser.id) return;
+  if (realtimeChannel) stopRealtime();
+
+  const uid = currentUser.id;
+  realtimeChannel = sb.channel('db-changes-' + uid);
+  realtimeChannel._userId = uid;
+
+  const listen = (table) => {
+    realtimeChannel.on('postgres_changes',
+      { event: '*', schema: 'public', table: table, filter: `user_db_id=eq.${uid}` },
+      (payload) => {
+        console.log(`🔔 Realtime [${table}] ${payload.eventType}`);
+        loadFromSupabase();
+      }
+    );
+  };
+
+  listen('expenses');
+  listen('budget_categories');
+  listen('savings_plans');
+  listen('settings');
+  listen('user_preferences');
+
+  realtimeChannel.subscribe((status) => {
+    console.log(`📡 Realtime status: ${status}`);
+  });
+}
+
+function stopRealtime() {
+  if (realtimeChannel && sb) {
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+}
+
+// ════════════════════════════════
 // SYNC FROM SUPABASE
 // ════════════════════════════════
 async function loadFromSupabase() {
   if (!currentUser) return;
-  if (isSyncing) return;   // prevent overlapping runs
+  initRealtime();
+  if (isSyncing) return;
   isSyncing = true;
   showSync('מסנכרן... ☁️');
   try {
-    await flushPending();   // retry queued writes first
-
+    await flushPending();
     const uid = currentUser.id;
     const [expRows, catRows, settRows, prefRows] = await Promise.all([
       sbFetch(`expenses?user_db_id=eq.${uid}&order=created_at.asc`),
@@ -238,7 +304,7 @@ async function loadFromSupabase() {
 
     saveLocal();
     await loadSavingsFromDB();
-    renderAll(); renderWatchlist(); updateHome();
+    renderAll(); updateHome();
 
     if (pendingWrites.length > 0) {
       showSync(`⏳ ${pendingWrites.length} שינויים ממתינים`, true);
@@ -254,7 +320,7 @@ async function loadFromSupabase() {
   }
 }
 
-// ── Debounced saveSettings (prevents 2 requests per keystroke) ──
+// ── Debounced saveSettings ──
 let _saveSettingsTimer = null;
 function saveSettings() {
   saveLocal();
@@ -275,7 +341,6 @@ async function _doSaveSettings() {
     watchlist: JSON.stringify(watchlist)
   };
   try {
-    // Upsert (requires UNIQUE on user_db_id in settings table)
     await sbFetch('settings', {
       method: 'POST',
       headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
@@ -283,7 +348,6 @@ async function _doSaveSettings() {
     });
     removePending('settings', 'main');
   } catch (e) {
-    // Fallback: read-then-write
     try {
       const existing = await sbFetch(`settings?user_db_id=eq.${currentUser.id}`);
       if (existing && existing.length > 0) {
@@ -309,12 +373,11 @@ function showSync(msg, fade = false) {
   if (fade) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
 
-// Periodic sync (skips if one is already running)
+// Fast polling (10s) + online retry
 setInterval(() => {
   if (currentUser && !isSyncing) loadFromSupabase();
-}, 30000);
+}, 10000);
 
-// Retry when the browser comes back online
 window.addEventListener('online', () => {
   if (currentUser) loadFromSupabase();
 });
