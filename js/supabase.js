@@ -60,8 +60,21 @@ function extractDateFromCreatedAt(isoStr) {
 
 function dateToCreatedAt(dateStr) {
   if (!dateStr) return new Date().toISOString();
-  // Set to noon UTC to avoid timezone day-shifts
   return `${dateStr}T12:00:00.000Z`;
+}
+
+// Backfill date for old cached entries that don't have it yet.
+// Old entries were created with `id: Date.now()`, so we can derive the date from the id.
+function ensureExpenseDate(e) {
+  if (!e || e.date) return e;
+  if (e.id && e.id > 1000000000000) {
+    const d = new Date(Math.floor(e.id / 1000) * 1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    e.date = `${y}-${m}-${day}`;
+  }
+  return e;
 }
 
 // ════════════════════════════════
@@ -172,10 +185,11 @@ function loadLocal() {
   try {
     const s = JSON.parse(localStorage.getItem(userKey('data')));
     if (!s) return;
-    if (s.expenses) expenses = s.expenses;
+    if (s.expenses) expenses = s.expenses.map(ensureExpenseDate);
     if (s.budgetCategories) budgetCategories = s.budgetCategories;
     if (s.watchlist) watchlist = s.watchlist;
     applyInputValues(s);
+    saveLocal();
   } catch(e) {}
 }
 
@@ -197,7 +211,7 @@ function applyInputValues(s) {
 // ════════════════════════════════
 function mergeExpenses(dbRows) {
   const byId = new Map();
-  for (const e of expenses) byId.set(e.id, e);
+  for (const e of expenses) byId.set(e.id, ensureExpenseDate(e));
   for (const r of dbRows) {
     if (hasPending('expense', r.id)) continue;
     if (hasPending('expense_delete', r.id)) continue;
