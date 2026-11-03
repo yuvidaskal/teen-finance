@@ -7,7 +7,6 @@ function switchTipTab(tab) {
   document.getElementById('tipSectionInvest').style.display = isInvest ? 'block' : 'none';
   document.getElementById('tipTabGeneral').className = isInvest ? 'btn btn-outline' : 'btn btn-primary';
   document.getElementById('tipTabInvest').className = isInvest ? 'btn btn-primary' : 'btn btn-outline';
-  // שמור העדפה
   localStorage.setItem('kc_tipTab', tab);
 }
 
@@ -52,6 +51,100 @@ function updateHome() {
   }
 
   document.getElementById('dailyTip').textContent = tips[Math.floor(Date.now() / 86400000) % tips.length];
+  renderExpensesChart();
+}
+
+// ════════════════════════════════
+// HOME CHART — Cumulative monthly expenses
+// ════════════════════════════════
+let expensesChart = null;
+
+function renderExpensesChart() {
+  const canvas = document.getElementById('expensesChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dailyTotals = new Array(daysInMonth + 1).fill(0);
+  for (const e of expenses) {
+    if (!e.date) continue;
+    const d = new Date(e.date + 'T00:00:00');
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      dailyTotals[d.getDate()] += e.amount;
+    }
+  }
+
+  const labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
+  const cumulative = [];
+  let sum = 0;
+  for (let i = 1; i <= daysInMonth; i++) {
+    if (i <= today) { sum += dailyTotals[i]; cumulative.push(sum); }
+    else cumulative.push(null);
+  }
+
+  const avgDaily = today > 0 ? sum / today : 0;
+  const forecast = new Array(daysInMonth).fill(null);
+  for (let i = 0; i < daysInMonth; i++) {
+    const dayNum = i + 1;
+    if (dayNum === today) forecast[i] = sum;
+    else if (dayNum > today) forecast[i] = sum + avgDaily * (dayNum - today) * 0.85;
+  }
+
+  if (expensesChart) { expensesChart.destroy(); expensesChart = null; }
+
+  expensesChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'בפועל',
+          data: cumulative,
+          borderColor: '#3dbdb5',
+          backgroundColor: 'rgba(61,189,181,0.12)',
+          fill: true, tension: 0.3,
+          pointRadius: 3, pointBackgroundColor: '#3dbdb5',
+          borderWidth: 2.5,
+        },
+        {
+          label: 'תחזית',
+          data: forecast,
+          borderColor: '#9ab5ba',
+          borderDash: [5, 5],
+          backgroundColor: 'transparent',
+          fill: false, tension: 0.3,
+          pointRadius: 0, borderWidth: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          rtl: true, textDirection: 'rtl',
+          callbacks: { label: (c) => `${c.dataset.label}: ₪${Math.round(c.parsed.y).toLocaleString('he-IL')}` }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => '₪' + v.toLocaleString('he-IL'), font: { size: 10 } },
+          grid: { color: 'rgba(61,189,181,0.08)' }
+        },
+        x: {
+          title: { display: true, text: 'יום בחודש', font: { size: 10 } },
+          ticks: { font: { size: 10 }, autoSkip: true, maxTicksLimit: 10 },
+          grid: { display: false }
+        }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════
@@ -67,8 +160,8 @@ if (savedSession) {
   }
 }
 
-if ('serviceWorker' in navigator) {
-  try {
-    navigator.serviceWorker.register('/teen-finance/sw.js').catch(() => {});
-  } catch(e) {}
-}
+// Service worker disabled — file sw.js doesn't exist in this repo.
+// Offline sync is handled by pendingWrites queue in supabase.js.
+
+// Stub — watchlist UI not present in this version.
+function renderWatchlist() { /* no-op */ }
