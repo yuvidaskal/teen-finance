@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>כסף חכם</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3dbdb5">
+<meta name="theme-color" content="#14b8a6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="כסף חכם">
@@ -19,7 +19,7 @@
     <div class="auth-logo">
       <img src="icon.png" alt="" onerror="this.style.display='none'">
       <div class="auth-logo-text">כסף חכם</div>
-      <div style="font-size:.8rem;color:var(--text2);margin-top:.2rem;">ניהול כלכלי לבני נוער</div>
+      <div style="font-size:.8rem;color:var(--text-2);margin-top:.2rem;">ניהול כלכלי לבני נוער</div>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" onclick="showAuthTab('login')">התחברות</button>
@@ -96,42 +96,86 @@
 
   <!-- HOME -->
   <div id="home" class="panel active">
-    <div class="card" style="background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;box-shadow:0 6px 18px rgba(61,189,181,.3);margin-bottom:1rem;">
-      <div style="font-size:1.2rem;font-weight:900;margin-bottom:.25rem;">שלום! ברוך הבא לכסף חכם 👋</div>
-      <div style="font-size:.8rem;opacity:.85;">כל מה שצריך כדי לנהל כסף בחכמה</div>
-    </div>
-    <div id="homeNavCards" class="quick-grid">
-      <div class="quick-card" onclick="switchTab('budget')"><span class="qc-icon">📊</span><div class="qc-title">מעקב תקציב</div><div class="qc-desc">עקוב אחרי ההוצאות שלך כל חודש</div></div>
-      <div class="quick-card" onclick="switchTab('savings')"><span class="qc-icon">🧮</span><div class="qc-title">מחשבון חיסכון</div><div class="qc-desc">חשב כמה תרוויח עם ריבית דריבית</div></div>
-    </div>
-    <div id="homeSummaryCards" class="grid2" style="margin-bottom:1rem;">
-      <div class="sum-card">
-        <div class="sum-icon">💰</div>
-        <div class="sum-label">יתרת תקציב</div>
-        <div class="sum-val" id="homeRemainder">—</div>
-        <div class="sum-sub">פנויה מהכנסה חודשית</div>
-        <button class="btn btn-outline" onclick="switchTab('budget')">עדכון תקציב ←</button>
+    <div class="h-top">
+      <div class="h-greeting-block">
+        <div class="h-time" id="hTime">יום שלישי, נובמבר</div>
+        <div class="h-name">שלום, <span id="hUserName">אורח</span> 👋</div>
       </div>
-      <div class="sum-card">
-        <div class="sum-icon">🏦</div>
-        <div class="sum-label">חיסכון צפוי</div>
-        <div class="sum-val" id="homeSavings">—</div>
-        <div class="sum-sub">לאחר <span id="homeYears">5</span> שנים</div>
-        <button class="btn btn-outline" onclick="switchTab('savings')">עדכון חיסכון ←</button>
+      <div class="h-avatar" id="hAvatar" onclick="openSettings()">י</div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-content">
+        <div class="hero-label">יתרה פנויה החודש</div>
+        <div class="hero-balance" id="homeBalance">₪0<sup>00</sup></div>
+        <div class="hero-sub" id="homeBalanceSub">הזן הכנסה כדי להתחיל</div>
+        <div class="hero-progress"><div class="hero-progress-fill" id="homeProgressFill" style="width:0%"></div></div>
+        <div class="hero-meta">
+          <span id="homeUsedPct">0% מהתקציב נוצל</span>
+          <span class="hero-pill" id="homeDaysLeft">⚡ 30 ימים נותרו</span>
+        </div>
       </div>
     </div>
-    <div class="card" id="homeChartCard" style="margin-bottom:1rem;">
-      <div class="card-title">📈 הוצאות מצטברות החודש</div>
-      <div style="position:relative;height:220px;">
-        <canvas id="expensesChart"></canvas>
+
+    <div class="qa-row">
+      <div class="qa-btn qa-teal" onclick="openQuickSheet('expense')">
+        <div class="qa-icon-wrap">➕</div>
+        <div class="qa-label">הוצאה</div>
       </div>
-      <div style="font-size:.68rem;color:var(--muted);text-align:center;margin-top:.5rem;">
-        הקו הרציף: הוצאות בפועל · הקו המקווקו: תחזית להמשך החודש
+      <div class="qa-btn qa-amber" onclick="openQuickSheet('income')">
+        <div class="qa-icon-wrap">💰</div>
+        <div class="qa-label">הכנסה</div>
+      </div>
+      <div class="qa-btn qa-purple" onclick="openQuickSheet('goal')">
+        <div class="qa-icon-wrap">🎯</div>
+        <div class="qa-label">יעד</div>
+      </div>
+      <div class="qa-btn qa-coral" onclick="openQuickSheet('budget')">
+        <div class="qa-icon-wrap">📊</div>
+        <div class="qa-label">תקציב</div>
       </div>
     </div>
-    <div id="homeTipCard" class="tip-of-day">
-      <div style="font-size:1.3rem;flex-shrink:0;">⚡</div>
-      <div><div class="tod-label">טיפ היום</div><div class="tod-text" id="dailyTip"></div></div>
+
+    <div class="view-card">
+      <div class="view-head">
+        <div>
+          <div class="view-title">הוצאות החודש</div>
+          <div class="view-subtitle" id="viewSubtitle">₪0 · 0 ימים</div>
+        </div>
+        <div class="seg-control">
+          <button class="seg-btn active" id="segChart" onclick="switchHomeView('chart')">📈 גרף</button>
+          <button class="seg-btn" id="segCal" onclick="switchHomeView('calendar')">📅 לוח</button>
+        </div>
+      </div>
+      <div class="view-pane active" id="paneChart">
+        <div class="chart-container"><canvas id="expensesChart"></canvas></div>
+      </div>
+      <div class="view-pane" id="paneCalendar">
+        <div class="cal-header">
+          <div class="cal-dow">א'</div><div class="cal-dow">ב'</div><div class="cal-dow">ג'</div>
+          <div class="cal-dow">ד'</div><div class="cal-dow">ה'</div><div class="cal-dow">ו'</div><div class="cal-dow">ש'</div>
+        </div>
+        <div class="cal-grid" id="homeCalendar"></div>
+        <div class="cal-legend">
+          <span>פחות</span>
+          <div class="cal-legend-boxes">
+            <div class="cal-legend-box" style="background:var(--bg-2);border:1px solid var(--border)"></div>
+            <div class="cal-legend-box" style="background:var(--teal-soft)"></div>
+            <div class="cal-legend-box" style="background:rgba(20,184,166,.35)"></div>
+            <div class="cal-legend-box" style="background:rgba(20,184,166,.6)"></div>
+            <div class="cal-legend-box" style="background:var(--teal-2)"></div>
+          </div>
+          <span>יותר</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-tip">
+      <div class="tip-icon-wrap">⚡</div>
+      <div>
+        <div class="tip-label">טיפ היום</div>
+        <div class="tip-text" id="dailyTip"></div>
+      </div>
     </div>
   </div>
 
@@ -165,7 +209,6 @@
 
   <!-- BUDGET -->
   <div id="budget" class="panel">
-    <!-- Edit expense modal -->
     <div id="editExpOverlay" onclick="closeEditExp(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
       <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
         <div style="font-size:1rem;font-weight:900;margin-bottom:1rem;">✏️ ערוך הוצאה</div>
@@ -191,7 +234,6 @@
       </div>
     </div>
 
-    <!-- Edit budget modal -->
     <div id="editCatOverlay" onclick="closeEditCat(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:none;align-items:center;justify-content:center;padding:1.5rem;">
       <div onclick="event.stopPropagation()" style="background:var(--card);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:380px;box-shadow:var(--shadow-hover);">
         <div style="font-size:1rem;font-weight:900;margin-bottom:1rem;">✏️ ערוך תקציב</div>
@@ -208,14 +250,14 @@
     <div class="card">
       <div class="card-title">💰 הכנסה חודשית</div>
       <div class="form-group"><label>הכנסה חודשית כוללת (₪)</label><input type="number" id="income" value="1200" min="0" oninput="updateBudget()"></div>
-      <div class="unalloc-box"><span style="font-size:.76rem;font-weight:700;color:var(--text2);">לא מחולק לתקציבים</span><span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span></div>
+      <div class="unalloc-box"><span style="font-size:.76rem;font-weight:700;color:var(--text-2);">לא מחולק לתקציבים</span><span style="font-size:1.05rem;font-weight:900;color:var(--teal-dark);" id="unallocatedDisplay">₪1,200</span></div>
     </div>
 
     <div class="card">
       <div class="card-title">📂 תקציבים</div>
       <div id="budgetCategoryList"></div>
-      <div style="border-top:1.5px solid var(--bg2);margin-top:.85rem;padding-top:.85rem;">
-        <div style="font-size:.68rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">+ הוסף תקציב חדש</div>
+      <div style="border-top:1.5px solid var(--bg-2);margin-top:.85rem;padding-top:.85rem;">
+        <div style="font-size:.68rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">+ הוסף תקציב חדש</div>
         <div class="emoji-row" id="catEmojiPicker">
           <button class="emoji-btn selected" data-emoji="🍕" onclick="selectCatEmoji(this)">🍕</button>
           <button class="emoji-btn" data-emoji="🚌" onclick="selectCatEmoji(this)">🚌</button>
@@ -259,7 +301,7 @@
     <div class="card">
       <div class="card-title">📋 כל ההוצאות</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-        <span style="font-size:.78rem;color:var(--text2);">כל ההוצאות החודש</span>
+        <span style="font-size:.78rem;color:var(--text-2);">כל ההוצאות החודש</span>
         <button class="btn btn-outline" onclick="exportToExcel()" style="font-size:.75rem;padding:.4rem .9rem;">📥 ייצא לאקסל</button>
       </div>
       <div class="income-box">
@@ -267,12 +309,12 @@
         <div style="text-align:left;"><div class="income-label">נותר</div><div class="income-val" id="remainderDisplay">₪1,200</div></div>
       </div>
       <div style="margin-bottom:.8rem;">
-        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text2);margin-bottom:.3rem;"><span>סה״כ הוצאות</span><span id="budgetPct">0%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-2);margin-bottom:.3rem;"><span>סה״כ הוצאות</span><span id="budgetPct">0%</span></div>
         <div class="bbar-track"><div class="bbar-fill" id="budgetBarFill" style="width:0%;background:var(--teal);"></div></div>
       </div>
       <ul class="expense-list" id="expenseList"></ul>
-      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1.5px solid var(--bg2);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:.78rem;color:var(--text2);">סה״כ הוצאות</span>
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1.5px solid var(--bg-2);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.78rem;color:var(--text-2);">סה״כ הוצאות</span>
         <span style="font-size:1.1rem;font-weight:900;color:var(--teal-dark);" id="totalExp">₪0</span>
       </div>
     </div>
@@ -315,6 +357,11 @@
   </div>
 </div>
 
+<!-- QUICK SHEET OVERLAY -->
+<div class="sheet-overlay" id="quickSheetOverlay" onclick="closeQuickSheet(event)">
+  <div class="sheet" onclick="event.stopPropagation()" id="quickSheetContent"></div>
+</div>
+
 <!-- LIBRARIES -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -326,6 +373,7 @@
 <script src="js/settings.js"></script>
 <script src="js/savings.js"></script>
 <script src="js/budget.js"></script>
+<script src="js/home.js"></script>
 <script src="js/app.js"></script>
 
 </body>
